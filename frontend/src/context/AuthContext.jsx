@@ -98,6 +98,57 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Sign in / sign up with a Google ID token (credential)
+  const googleLogin = async (credential) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/google`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ credential }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        localStorage.setItem('token', data.token);
+        setToken(data.token);
+        setUser(data);
+        return { success: true, needsPhone: data.needsPhone };
+      } else {
+        return { success: false, message: data.message || 'Google sign-in failed' };
+      }
+    } catch (err) {
+      return { success: false, message: 'Server error, please try again later' };
+    }
+  };
+
+  // Save / update the logged-in user's phone number
+  const updatePhone = async (phone) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/phone`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ phone }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setUser((prev) => ({ ...prev, phone: data.phone }));
+        return { success: true };
+      } else {
+        return { success: false, message: data.message || 'Could not save phone number' };
+      }
+    } catch (err) {
+      return { success: false, message: 'Server error, please try again later' };
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     setToken(null);
@@ -105,7 +156,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, API_URL }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, googleLogin, updatePhone, logout, API_URL }}>
       {children}
     </AuthContext.Provider>
   );

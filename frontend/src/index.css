@@ -584,6 +584,30 @@ main {
   font-weight: 600;
 }
 
+/* Divider between password form and Google sign-in */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1.5rem 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.auth-divider span {
+  padding: 0 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 /* Listing Details Page */
 .detail-grid {
   display: grid;

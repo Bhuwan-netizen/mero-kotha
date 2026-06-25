@@ -1,10 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, AuthContext } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import DonationModal from './components/DonationModal';
+import PhonePromptModal from './components/PhonePromptModal';
 import PrivateRoute from './components/PrivateRoute';
+
+// Shows the phone-prompt modal whenever a logged-in user has no phone on file
+// (e.g. just signed up with Google). Lives inside AuthProvider to read context.
+const PhoneGate = () => {
+  const { user, loading } = useContext(AuthContext);
+  if (loading || !user || user.phone) return null;
+  return <PhonePromptModal />;
+};
 
 // Import Pages
 import Home from './pages/Home';
@@ -65,6 +74,8 @@ function App() {
           <Footer onOpenDonation={openDonationModal} />
           
           <DonationModal isOpen={isDonationOpen} onClose={closeDonationModal} />
+
+          <PhoneGate />
         </div>
       </Router>
     </AuthProvider>

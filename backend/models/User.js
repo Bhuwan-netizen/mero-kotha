@@ -19,11 +19,23 @@ const UserSchema = new mongoose.Schema(
     },
     phone: {
       type: String,
-      required: [true, 'Please add a contact phone number'],
+      // Optional: Google users won't have a phone initially (prompted after sign-in)
+      default: '',
+    },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true, // allows multiple docs without a googleId
     },
     password: {
       type: String,
-      required: [true, 'Please add a password'],
+      // Required only for accounts that did not sign up via Google
+      required: [
+        function () {
+          return !this.googleId;
+        },
+        'Please add a password',
+      ],
       minlength: 6,
       select: false,
     },
@@ -39,15 +51,18 @@ const UserSchema = new mongoose.Schema(
 
 // Hash password before saving
 UserSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) {
-    next();
+  // Skip if password unchanged or not set (e.g. Google accounts)
+  if (!this.isModified('password') || !this.password) {
+    return next();
   }
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
+  next();
 });
 
 // Compare password
 UserSchema.methods.matchPassword = async function (enteredPassword) {
+  if (!this.password) return false; // Google-only account, no password set
   return await bcrypt.compare(enteredPassword, this.password);
 };
 

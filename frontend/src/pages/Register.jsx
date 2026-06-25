@@ -1,10 +1,11 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
 import { AuthContext } from '../context/AuthContext';
 import { User, Mail, Phone, KeyRound, AlertTriangle } from 'lucide-react';
 
 const Register = () => {
-  const { register, user } = useContext(AuthContext);
+  const { register, googleLogin, user } = useContext(AuthContext);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -48,6 +49,17 @@ const Register = () => {
       navigate('/dashboard');
     } else {
       setError(result.message || 'Registration failed');
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError('');
+    const result = await googleLogin(credentialResponse.credential);
+    if (result.success) {
+      // If the user has no phone yet, the global PhonePromptModal collects it.
+      navigate('/dashboard');
+    } else {
+      setError(result.message || 'Google sign-in failed');
     }
   };
 
@@ -161,6 +173,20 @@ const Register = () => {
             {isSubmitting ? 'Registering...' : 'Register'}
           </button>
         </form>
+
+        <div className="auth-divider">
+          <span>or</span>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => setError('Google sign-in was cancelled or failed')}
+            text="signup_with"
+            shape="rectangular"
+            width="320"
+          />
+        </div>
 
         <div className="auth-footer">
           Already have an account? <Link to="/login">Login here</Link>

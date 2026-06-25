@@ -82,7 +82,11 @@ const Home = () => {
           <p className="hero-subtitle">
             Explore verified rooms, flats, and houses for rent across Ward 1 to 10 in Birtamode, Jhapa, Nepal.
           </p>
-          <p>Please wait while the items are loaded.</p>
+          {loading && (
+            <p style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--primary)', marginTop: '1rem' }}>
+              Please wait while the items are loaded.
+            </p>
+          )}
         </div>
       </section>
 

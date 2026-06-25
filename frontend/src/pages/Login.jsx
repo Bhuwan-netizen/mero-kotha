@@ -1,10 +1,11 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
 import { AuthContext } from '../context/AuthContext';
 import { KeyRound, Mail, AlertTriangle } from 'lucide-react';
 
 const Login = () => {
-  const { login, user } = useContext(AuthContext);
+  const { login, googleLogin, user } = useContext(AuthContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -35,6 +36,16 @@ const Login = () => {
       navigate('/dashboard');
     } else {
       setError(result.message || 'Login failed');
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError('');
+    const result = await googleLogin(credentialResponse.credential);
+    if (result.success) {
+      navigate('/dashboard');
+    } else {
+      setError(result.message || 'Google sign-in failed');
     }
   };
 
@@ -97,6 +108,20 @@ const Login = () => {
             {isSubmitting ? 'Logging in...' : 'Login'}
           </button>
         </form>
+
+        <div className="auth-divider">
+          <span>or</span>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => setError('Google sign-in was cancelled or failed')}
+            text="signin_with"
+            shape="rectangular"
+            width="320"
+          />
+        </div>
 
         <div className="auth-footer">
           Don't have an account? <Link to="/register">Register here</Link>
