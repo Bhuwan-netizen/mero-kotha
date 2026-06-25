@@ -194,8 +194,8 @@ router.delete('/:id', protect, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Listing not found' });
     }
 
-    // Verify ownership
-    if (listing.owner.toString() !== req.user._id.toString()) {
+    // Verify ownership (admins may delete any listing)
+    if (listing.owner.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(401).json({ success: false, message: 'Not authorized to delete this listing' });
     }
 
@@ -230,8 +230,8 @@ router.put('/:id', protect, handleUpload, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Listing not found' });
     }
 
-    // Verify ownership
-    if (listing.owner.toString() !== req.user._id.toString()) {
+    // Verify ownership (admins may update any listing)
+    if (listing.owner.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(401).json({ success: false, message: 'Not authorized to update this listing' });
     }
 

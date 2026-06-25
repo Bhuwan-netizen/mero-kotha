@@ -2,7 +2,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { AuthContext } from '../context/AuthContext';
-import { User, Mail, Phone, KeyRound, AlertTriangle } from 'lucide-react';
+import { User, Mail, Phone, KeyRound, AlertTriangle, ShieldCheck } from 'lucide-react';
 
 const Register = () => {
   const { register, googleLogin, user } = useContext(AuthContext);
@@ -11,6 +11,8 @@ const Register = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [adminCode, setAdminCode] = useState('');
+  const [showAdminCode, setShowAdminCode] = useState(false);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
@@ -42,7 +44,7 @@ const Register = () => {
     }
 
     setIsSubmitting(true);
-    const result = await register(name, email, phone, password);
+    const result = await register(name, email, phone, password, showAdminCode ? adminCode : '');
     setIsSubmitting(false);
 
     if (result.success) {
@@ -163,6 +165,37 @@ const Register = () => {
               />
             </div>
           </div>
+
+          {/* Optional: register as an admin with a secret code */}
+          {!showAdminCode ? (
+            <button
+              type="button"
+              onClick={() => setShowAdminCode(true)}
+              style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem', padding: 0, marginTop: '0.25rem' }}
+            >
+              <ShieldCheck size={15} />
+              I have an admin code
+            </button>
+          ) : (
+            <div className="form-group">
+              <label htmlFor="adminCode">Admin Code (optional)</label>
+              <div style={{ position: 'relative' }}>
+                <ShieldCheck size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                <input
+                  type="password"
+                  id="adminCode"
+                  className="form-control"
+                  style={{ paddingLeft: '2.5rem' }}
+                  placeholder="Enter secret admin code"
+                  value={adminCode}
+                  onChange={(e) => setAdminCode(e.target.value)}
+                />
+              </div>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
+                Leave blank to register as a normal owner. A valid code grants admin access.
+              </p>
+            </div>
+          )}
 
           <button
             type="submit"

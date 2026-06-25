@@ -6,6 +6,7 @@ import Footer from './components/Footer';
 import DonationModal from './components/DonationModal';
 import PhonePromptModal from './components/PhonePromptModal';
 import PrivateRoute from './components/PrivateRoute';
+import AdminRoute from './components/AdminRoute';
 
 // Shows the phone-prompt modal whenever a logged-in user has no phone on file
 // (e.g. just signed up with Google). Lives inside AuthProvider to read context.
@@ -23,6 +24,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import CreateListing from './pages/CreateListing';
 import EditListing from './pages/EditListing';
+import AdminPanel from './pages/AdminPanel';
 
 function App() {
   const [isDonationOpen, setIsDonationOpen] = useState(false);
@@ -66,6 +68,16 @@ function App() {
                   <PrivateRoute>
                     <EditListing />
                   </PrivateRoute>
+                }
+              />
+
+              {/* Admin-only Panel */}
+              <Route
+                path="/admin"
+                element={
+                  <AdminRoute>
+                    <AdminPanel />
+                  </AdminRoute>
                 }
               />
             </Routes>

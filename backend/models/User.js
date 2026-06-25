@@ -27,6 +27,11 @@ const UserSchema = new mongoose.Schema(
       unique: true,
       sparse: true, // allows multiple docs without a googleId
     },
+    role: {
+      type: String,
+      enum: ['user', 'admin'],
+      default: 'user',
+    },
     password: {
       type: String,
       // Required only for accounts that did not sign up via Google

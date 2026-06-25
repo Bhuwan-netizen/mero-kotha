@@ -19,7 +19,7 @@ const generateToken = (id) => {
 // @route   POST /api/auth/register
 // @access  Public
 router.post('/register', async (req, res) => {
-  const { name, email, phone, password } = req.body;
+  const { name, email, phone, password, adminCode } = req.body;
 
   try {
     // Check if user exists
@@ -29,12 +29,23 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ success: false, message: 'User already exists with this email' });
     }
 
+    // Determine role. An admin account is only granted when the correct
+    // secret code (set in ADMIN_SIGNUP_CODE) is supplied at signup.
+    let role = 'user';
+    if (adminCode) {
+      if (!process.env.ADMIN_SIGNUP_CODE || adminCode !== process.env.ADMIN_SIGNUP_CODE) {
+        return res.status(400).json({ success: false, message: 'Invalid admin code' });
+      }
+      role = 'admin';
+    }
+
     // Create user
     const user = await User.create({
       name,
       email,
       phone,
       password,
+      role,
     });
 
     if (user) {
@@ -44,6 +55,7 @@ router.post('/register', async (req, res) => {
         name: user.name,
         email: user.email,
         phone: user.phone,
+        role: user.role,
         token: generateToken(user._id),
       });
     } else {
@@ -71,6 +83,7 @@ router.post('/login', async (req, res) => {
         name: user.name,
         email: user.email,
         phone: user.phone,
+        role: user.role,
         token: generateToken(user._id),
       });
     } else {
@@ -95,6 +108,7 @@ router.get('/profile', protect, async (req, res) => {
         name: user.name,
         email: user.email,
         phone: user.phone,
+        role: user.role,
       });
     } else {
       res.status(404).json({ success: false, message: 'User not found' });
@@ -152,6 +166,7 @@ router.post('/google', async (req, res) => {
       name: user.name,
       email: user.email,
       phone: user.phone || '',
+      role: user.role,
       token: generateToken(user._id),
       needsPhone: !user.phone,
     });
@@ -186,6 +201,7 @@ router.put('/phone', protect, async (req, res) => {
       name: user.name,
       email: user.email,
       phone: user.phone,
+      role: user.role,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
