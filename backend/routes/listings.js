@@ -2,26 +2,28 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('../config/cloudinary');
 const Listing = require('../models/Listing');
 const { protect } = require('../middleware/auth');
 
-// Make sure uploads directory exists
-const uploadDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// Multer Storage Configuration
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+// Store uploaded images on Cloudinary (persistent CDN) instead of local disk.
+// Local disk on hosts like Render is wiped on every restart/redeploy.
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'mero-kotha',
+    allowed_formats: ['jpeg', 'jpg', 'png', 'webp'],
+    transformation: [{ width: 1200, height: 1200, crop: 'limit' }],
   },
 });
+
+// Extract a Cloudinary public_id from a stored secure URL (needed for deletion)
+const getCloudinaryPublicId = (url) => {
+  if (!url || !url.includes('/upload/')) return null;
+  const match = url.match(/\/upload\/(?:v\d+\/)?(.+)\.[a-zA-Z0-9]+$/);
+  return match ? match[1] : null;
+};
 
 // File filter (images only)
 const fileFilter = (req, file, cb) => {
@@ -76,12 +78,11 @@ router.post('/', protect, handleUpload, async (req, res) => {
     const isNegotiableBool = isNegotiable === 'true' || isNegotiable === true;
     const parsedPrice = isNegotiableBool && (!price || parseFloat(price) === 0) ? 0 : parseFloat(price);
 
-    // Process uploaded file paths
+    // Cloudinary returns the hosted image URL as file.path
     const imagePaths = [];
     if (req.files && req.files.length > 0) {
       req.files.forEach((file) => {
-        // Save relative path, e.g. /uploads/filename.jpg
-        imagePaths.push(`/uploads/${file.filename}`);
+        imagePaths.push(file.path);
       });
     }
 
@@ -100,10 +101,10 @@ router.post('/', protect, handleUpload, async (req, res) => {
 
     res.status(201).json({ success: true, data: listing });
   } catch (error) {
-    // Delete uploaded files if creation failed
+    // Remove uploaded images from Cloudinary if creation failed
     if (req.files && req.files.length > 0) {
       req.files.forEach((file) => {
-        fs.unlink(file.path, () => {});
+        if (file.filename) cloudinary.uploader.destroy(file.filename).catch(() => {});
       });
     }
     res.status(500).json({ success: false, message: error.message });
@@ -198,13 +199,15 @@ router.delete('/:id', protect, async (req, res) => {
       return res.status(401).json({ success: false, message: 'Not authorized to delete this listing' });
     }
 
-    // Delete associated images
+    // Delete associated images from Cloudinary
     if (listing.images && listing.images.length > 0) {
-      listing.images.forEach((imgPath) => {
-        const fullPath = path.join(__dirname, '..', imgPath);
-        fs.unlink(fullPath, (err) => {
-          if (err) console.error(`Failed to delete file: ${fullPath}`, err);
-        });
+      listing.images.forEach((imgUrl) => {
+        const publicId = getCloudinaryPublicId(imgUrl);
+        if (publicId) {
+          cloudinary.uploader.destroy(publicId).catch((err) => {
+            console.error(`Failed to delete Cloudinary image: ${publicId}`, err);
+          });
+        }
       });
     }
 
@@ -259,22 +262,22 @@ router.put('/:id', protect, handleUpload, async (req, res) => {
 
     // Handle images update if new files are uploaded
     if (req.files && req.files.length > 0) {
-      // Delete old images from disk
+      // Delete old images from Cloudinary
       if (listing.images && listing.images.length > 0) {
-        listing.images.forEach((imgPath) => {
-          const fullPath = path.join(__dirname, '..', imgPath);
-          if (fs.existsSync(fullPath)) {
-            fs.unlink(fullPath, (err) => {
-              if (err) console.error(`Failed to delete old file: ${fullPath}`, err);
+        listing.images.forEach((imgUrl) => {
+          const publicId = getCloudinaryPublicId(imgUrl);
+          if (publicId) {
+            cloudinary.uploader.destroy(publicId).catch((err) => {
+              console.error(`Failed to delete old Cloudinary image: ${publicId}`, err);
             });
           }
         });
       }
 
-      // Save new image relative paths
+      // Save new Cloudinary URLs
       const imagePaths = [];
       req.files.forEach((file) => {
-        imagePaths.push(`/uploads/${file.filename}`);
+        imagePaths.push(file.path);
       });
       listing.images = imagePaths;
     }
@@ -283,12 +286,10 @@ router.put('/:id', protect, handleUpload, async (req, res) => {
 
     res.json({ success: true, data: listing });
   } catch (error) {
-    // Delete newly uploaded files if update failed
+    // Remove newly uploaded images from Cloudinary if update failed
     if (req.files && req.files.length > 0) {
       req.files.forEach((file) => {
-        if (fs.existsSync(file.path)) {
-          fs.unlink(file.path, () => {});
-        }
+        if (file.filename) cloudinary.uploader.destroy(file.filename).catch(() => {});
       });
     }
     res.status(500).json({ success: false, message: error.message });

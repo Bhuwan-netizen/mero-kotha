@@ -70,6 +70,8 @@ const ListingDetail = () => {
   const { title, description, ward, location, price, images, contactName, contactPhone, createdAt, isNegotiable } = listing;
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+  // Cloudinary images are absolute URLs; older /uploads paths get the backend prefix
+  const resolveImg = (img) => (img && img.startsWith('http') ? img : `${backendUrl}${img}`);
   const hasImages = images && images.length > 0;
   
   // Format price
@@ -118,7 +120,7 @@ const ListingDetail = () => {
           {/* Main Display Image */}
           <div className="main-image-container">
             <img
-              src={hasImages ? `${backendUrl}${images[activeImageIndex]}` : 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1000&q=80'}
+              src={hasImages ? resolveImg(images[activeImageIndex]) : 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1000&q=80'}
               alt={title}
               className="main-image"
               onError={(e) => {
@@ -138,7 +140,7 @@ const ListingDetail = () => {
                   onClick={() => setActiveImageIndex(index)}
                 >
                   <img
-                    src={`${backendUrl}${imgUrl}`}
+                    src={resolveImg(imgUrl)}
                     alt={`${title} Thumbnail ${index + 1}`}
                     className="thumbnail-img"
                   />

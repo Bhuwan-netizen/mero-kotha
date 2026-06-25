@@ -128,8 +128,9 @@ const Dashboard = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {listings.map((listing) => {
               const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-              const thumbImage = listing.images && listing.images.length > 0
-                ? `${backendUrl}${listing.images[0]}`
+              const firstImg = listing.images && listing.images.length > 0 ? listing.images[0] : null;
+              const thumbImage = firstImg
+                ? (firstImg.startsWith('http') ? firstImg : `${backendUrl}${firstImg}`)
                 : 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=150&q=80';
 
               return (

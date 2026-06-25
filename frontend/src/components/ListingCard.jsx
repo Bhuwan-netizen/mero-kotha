@@ -12,8 +12,10 @@ const ListingCard = ({ listing }) => {
 
   // Set default placeholder image if no images exist
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-  const mainImage = images && images.length > 0 
-    ? `${backendUrl}${images[0]}` 
+  // Cloudinary images are absolute URLs; older /uploads paths get the backend prefix
+  const resolveImg = (img) => (img && img.startsWith('http') ? img : `${backendUrl}${img}`);
+  const mainImage = images && images.length > 0
+    ? resolveImg(images[0])
     : 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=600&q=80'; // high quality placeholder room
 
   // Render price display dynamically

@@ -312,9 +312,10 @@ const EditListing = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
               {existingImages.map((imgUrl, index) => {
                 const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+                const src = imgUrl && imgUrl.startsWith('http') ? imgUrl : `${backendUrl}${imgUrl}`;
                 return (
                   <div key={index} className="preview-container">
-                    <img src={`${backendUrl}${imgUrl}`} alt={`Current ${index + 1}`} className="preview-img" onError={(e) => {
+                    <img src={src} alt={`Current ${index + 1}`} className="preview-img" onError={(e) => {
                       e.target.onerror = null;
                       e.target.src = 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=300&q=80';
                     }} />
