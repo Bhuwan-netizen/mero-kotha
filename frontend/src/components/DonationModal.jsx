@@ -24,7 +24,7 @@ const DonationModal = ({ isOpen, onClose }) => {
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
               eSewa ID / Phone Number
             </p>
-            <div className="esewa-number">9815810188</div>
+            <div className="esewa-number">9815910188</div>
             <p style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-main)', marginTop: '0.25rem' }}>
               Name: Bhuwan Sangroula
             </p>
