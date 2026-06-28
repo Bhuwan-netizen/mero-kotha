@@ -78,13 +78,16 @@ router.post('/', protect, handleUpload, async (req, res) => {
     const isNegotiableBool = isNegotiable === 'true' || isNegotiable === true;
     const parsedPrice = isNegotiableBool && (!price || parseFloat(price) === 0) ? 0 : parseFloat(price);
 
+    // At least one property photo is required
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, message: 'Please upload at least one property photo' });
+    }
+
     // Cloudinary returns the hosted image URL as file.path
     const imagePaths = [];
-    if (req.files && req.files.length > 0) {
-      req.files.forEach((file) => {
-        imagePaths.push(file.path);
-      });
-    }
+    req.files.forEach((file) => {
+      imagePaths.push(file.path);
+    });
 
     const listing = await Listing.create({
       owner: req.user._id,

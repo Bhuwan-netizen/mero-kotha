@@ -978,3 +978,67 @@ main {
     grid-template-columns: 1fr;
   }
 }
+
+/* Small phones: show listings two-per-row instead of one giant card each */
+@media (max-width: 640px) {
+  .listings-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.85rem;
+  }
+  .card-img-wrapper {
+    height: 130px;
+  }
+  .card-badge {
+    top: 0.5rem;
+    left: 0.5rem;
+    padding: 0.15rem 0.5rem;
+    font-size: 0.65rem;
+  }
+  .card-price {
+    bottom: 0.5rem;
+    right: 0.5rem;
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.78rem !important;
+  }
+  .card-body {
+    padding: 0.75rem;
+  }
+  .card-title {
+    font-size: 0.95rem;
+    margin-bottom: 0.35rem;
+  }
+  .card-location {
+    font-size: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  .card-description {
+    font-size: 0.8rem;
+    margin-bottom: 0.85rem;
+  }
+  .card-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    padding-top: 0.75rem;
+  }
+  .card-owner {
+    font-size: 0.75rem;
+    justify-content: center;
+  }
+  .card-footer .btn {
+    justify-content: center;
+  }
+}
+
+/* Very narrow phones: keep two columns but tighten further */
+@media (max-width: 380px) {
+  .listings-grid {
+    gap: 0.6rem;
+  }
+  .card-img-wrapper {
+    height: 110px;
+  }
+  .card-title {
+    font-size: 0.88rem;
+  }
+}

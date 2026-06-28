@@ -21,6 +21,11 @@ const generateToken = (id) => {
 router.post('/register', async (req, res) => {
   const { name, email, phone, password, adminCode } = req.body;
 
+  // Phone number is required for email/password registration
+  if (!phone || !phone.trim()) {
+    return res.status(400).json({ success: false, message: 'Please add a contact phone number' });
+  }
+
   try {
     // Check if user exists
     const userExists = await User.findOne({ email });

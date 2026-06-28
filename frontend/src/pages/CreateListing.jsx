@@ -95,6 +95,12 @@ const CreateListing = () => {
       return;
     }
 
+    // At least one property photo is required
+    if (selectedImages.length === 0) {
+      setError('Please upload at least one property photo.');
+      return;
+    }
+
     if (price) {
       const priceNum = parseFloat(price);
       if (isNaN(priceNum) || priceNum <= 0) {
@@ -263,7 +269,7 @@ const CreateListing = () => {
 
         {/* Images Upload */}
         <div className="form-group">
-          <label>Property Images (Upload exactly or up to 2 images only) *</label>
+          <label>Property Images (at least 1, up to 2 images) *</label>
           
           <div className="upload-zone" onClick={triggerFileSelect}>
             <Upload size={32} color="var(--primary)" style={{ margin: '0 auto 0.5rem', opacity: 0.8 }} />
