@@ -1,19 +1,36 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import ListingCard from '../components/ListingCard';
-import { Search, MapPin, SlidersHorizontal, RefreshCw } from 'lucide-react';
+import { Search, MapPin, SlidersHorizontal, RefreshCw, ChevronDown } from 'lucide-react';
+import {
+  MUNICIPALITY_NAMES,
+  getWardOptions,
+  PROPERTY_TYPES,
+  FURNISHING_OPTIONS,
+  TENANT_OPTIONS,
+  AMENITIES,
+} from '../constants/jhapa';
 
 const Home = () => {
   const { API_URL } = useContext(AuthContext);
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
 
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedMunicipality, setSelectedMunicipality] = useState('');
   const [selectedWard, setSelectedWard] = useState('');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
+  const [propertyType, setPropertyType] = useState('');
+  const [furnishing, setFurnishing] = useState('');
+  const [preferredTenant, setPreferredTenant] = useState('');
+  const [amenities, setAmenities] = useState([]);
+
+  // Ward options depend on the selected municipality ([] when "All wards")
+  const wardOptions = selectedMunicipality ? getWardOptions(selectedMunicipality) : [];
 
   // Fetch listings from server
   const fetchListings = async () => {
@@ -22,10 +39,15 @@ const Home = () => {
     try {
       // Build query string
       const params = new URLSearchParams();
+      if (selectedMunicipality) params.append('municipality', selectedMunicipality);
       if (selectedWard) params.append('ward', selectedWard);
       if (minPrice) params.append('minPrice', minPrice);
       if (maxPrice) params.append('maxPrice', maxPrice);
       if (searchTerm) params.append('search', searchTerm);
+      if (propertyType) params.append('propertyType', propertyType);
+      if (furnishing) params.append('furnishing', furnishing);
+      if (preferredTenant) params.append('preferredTenant', preferredTenant);
+      if (amenities.length > 0) params.append('amenities', amenities.join(','));
 
       const res = await fetch(`${API_URL}/listings?${params.toString()}`);
       const data = await res.json();
@@ -43,9 +65,22 @@ const Home = () => {
     }
   };
 
+  // Auto-refetch when a dropdown-style filter changes
   useEffect(() => {
     fetchListings();
-  }, [selectedWard]); // Auto-refetch when ward changes, for others user clicks "Search" or we debounced, but a "Filter" button or trigger is good.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMunicipality, selectedWard, propertyType, furnishing, preferredTenant]);
+
+  const handleMunicipalityChange = (e) => {
+    setSelectedMunicipality(e.target.value);
+    setSelectedWard(''); // reset ward when municipality changes
+  };
+
+  const toggleAmenity = (item) => {
+    setAmenities((prev) =>
+      prev.includes(item) ? prev.filter((a) => a !== item) : [...prev, item]
+    );
+  };
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -54,9 +89,14 @@ const Home = () => {
 
   const handleReset = () => {
     setSearchTerm('');
+    setSelectedMunicipality('');
     setSelectedWard('');
     setMinPrice('');
     setMaxPrice('');
+    setPropertyType('');
+    setFurnishing('');
+    setPreferredTenant('');
+    setAmenities([]);
     // We fetch again with empty parameters
     setLoading(true);
     fetch(`${API_URL}/listings`)
@@ -77,10 +117,10 @@ const Home = () => {
       <section className="hero">
         <div className="container">
           <h1 className="hero-title">
-            Find Your Next <span>Kotha</span> in Birtamode
+            Find Your Next <span>Kotha</span> in Jhapa
           </h1>
           <p className="hero-subtitle">
-            Explore verified rooms, flats, and houses for rent across Ward 1 to 10 in Birtamode, Jhapa, Nepal.
+            Explore rooms, flats, and houses for rent across all municipalities of Jhapa district, Nepal.
           </p>
           {loading && (
             <p style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--primary)', marginTop: '1rem' }}>
@@ -111,17 +151,35 @@ const Home = () => {
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label htmlFor="ward">Select Ward</label>
+              <label htmlFor="municipality">Municipality</label>
+              <select
+                id="municipality"
+                className="form-control"
+                value={selectedMunicipality}
+                onChange={handleMunicipalityChange}
+              >
+                <option value="">All of Jhapa</option>
+                {MUNICIPALITY_NAMES.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label htmlFor="ward">Ward</label>
               <select
                 id="ward"
                 className="form-control"
                 value={selectedWard}
                 onChange={(e) => setSelectedWard(e.target.value)}
+                disabled={!selectedMunicipality}
               >
-                <option value="">All Wards (1 - 10)</option>
-                {[...Array(10)].map((_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    Ward {i + 1}
+                <option value="">{selectedMunicipality ? 'All wards' : 'Select municipality first'}</option>
+                {wardOptions.map((w) => (
+                  <option key={w} value={w}>
+                    Ward {w}
                   </option>
                 ))}
               </select>
@@ -164,6 +222,91 @@ const Home = () => {
               </button>
             </div>
           </div>
+
+          {/* Toggle for advanced filters */}
+          <button
+            type="button"
+            className="more-filters-toggle"
+            onClick={() => setShowMoreFilters((s) => !s)}
+          >
+            <SlidersHorizontal size={14} />
+            {showMoreFilters ? 'Hide advanced filters' : 'More filters'}
+            <ChevronDown
+              size={15}
+              style={{ transform: showMoreFilters ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
+            />
+          </button>
+
+          {showMoreFilters && (
+            <div className="advanced-filters">
+              <div className="filter-grid">
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label htmlFor="propertyType">Property Type</label>
+                  <select
+                    id="propertyType"
+                    className="form-control"
+                    value={propertyType}
+                    onChange={(e) => setPropertyType(e.target.value)}
+                  >
+                    <option value="">Any type</option>
+                    {PROPERTY_TYPES.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label htmlFor="furnishing">Furnishing</label>
+                  <select
+                    id="furnishing"
+                    className="form-control"
+                    value={furnishing}
+                    onChange={(e) => setFurnishing(e.target.value)}
+                  >
+                    <option value="">Any</option>
+                    {FURNISHING_OPTIONS.map((f) => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label htmlFor="preferredTenant">Preferred Tenant</label>
+                  <select
+                    id="preferredTenant"
+                    className="form-control"
+                    value={preferredTenant}
+                    onChange={(e) => setPreferredTenant(e.target.value)}
+                  >
+                    <option value="">Any</option>
+                    {TENANT_OPTIONS.filter((t) => t !== 'Any').map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0, marginTop: '1rem' }}>
+                <label>Amenities</label>
+                <div className="amenities-grid">
+                  {AMENITIES.map((item) => (
+                    <label key={item} className={`amenity-chip ${amenities.includes(item) ? 'selected' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={amenities.includes(item)}
+                        onChange={() => toggleAmenity(item)}
+                        style={{ display: 'none' }}
+                      />
+                      {item}
+                    </label>
+                  ))}
+                </div>
+                <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem' }}>
+                  Apply amenity filters
+                </button>
+              </div>
+            </div>
+          )}
         </form>
 
         {/* Listings Display */}

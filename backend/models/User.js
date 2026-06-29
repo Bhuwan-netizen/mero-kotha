@@ -44,6 +44,13 @@ const UserSchema = new mongoose.Schema(
       minlength: 6,
       select: false,
     },
+    // Listings this user has saved / bookmarked (favorites).
+    savedListings: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Listing',
+      },
+    ],
     createdAt: {
       type: Date,
       default: Date.now,

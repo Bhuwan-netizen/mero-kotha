@@ -1,7 +1,7 @@
 import React, { useContext, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { Home, Menu, X, PlusCircle, LogOut, User, ShieldCheck } from 'lucide-react';
+import { Home, Menu, X, PlusCircle, LogOut, User, ShieldCheck, Heart } from 'lucide-react';
 
 const Navbar = ({ onOpenDonation }) => {
   const { user, logout } = useContext(AuthContext);
@@ -66,6 +66,16 @@ const Navbar = ({ onOpenDonation }) => {
                 onClick={() => setIsOpen(false)}
               >
                 Dashboard
+              </NavLink>
+
+              <NavLink
+                to="/saved"
+                className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+                onClick={() => setIsOpen(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+              >
+                <Heart size={16} />
+                Saved
               </NavLink>
 
               <NavLink to="/create-listing" className="btn btn-primary" onClick={() => setIsOpen(false)}>

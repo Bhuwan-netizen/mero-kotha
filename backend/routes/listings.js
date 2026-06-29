@@ -5,7 +5,31 @@ const path = require('path');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const cloudinary = require('../config/cloudinary');
 const Listing = require('../models/Listing');
+const User = require('../models/User');
 const { protect } = require('../middleware/auth');
+const {
+  isValidWard,
+  PROPERTY_TYPES,
+  FURNISHING_OPTIONS,
+  TENANT_OPTIONS,
+  AMENITIES,
+} = require('../config/jhapa');
+
+// Normalize the amenities payload (sent as JSON string or array) to a clean
+// list limited to known amenity values.
+const parseAmenities = (raw) => {
+  let arr = [];
+  if (Array.isArray(raw)) arr = raw;
+  else if (typeof raw === 'string' && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw);
+      arr = Array.isArray(parsed) ? parsed : raw.split(',');
+    } catch {
+      arr = raw.split(',');
+    }
+  }
+  return arr.map((a) => String(a).trim()).filter((a) => AMENITIES.includes(a));
+};
 
 // Store uploaded images on Cloudinary (persistent CDN) instead of local disk.
 // Local disk on hosts like Render is wiped on every restart/redeploy.
@@ -67,13 +91,23 @@ const handleUpload = (req, res, next) => {
 // @access  Private (Owners only)
 router.post('/', protect, handleUpload, async (req, res) => {
   try {
-    const { title, description, ward, location, price, contactName, contactPhone, isNegotiable } = req.body;
+    const {
+      title, description, municipality, ward, location, price,
+      contactName, contactPhone, isNegotiable,
+      propertyType, furnishing, bedrooms, bathrooms, amenities, preferredTenant,
+    } = req.body;
 
-    // Ward validation (1 to 10)
+    // Municipality + ward validation (ward range depends on the municipality)
     const wardNum = parseInt(ward);
-    if (isNaN(wardNum) || wardNum < 1 || wardNum > 10) {
-      return res.status(400).json({ success: false, message: 'Ward number must be between 1 and 10' });
+    if (!municipality || !isValidWard(municipality, wardNum)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please select a valid municipality and ward number',
+      });
     }
+
+    // Property type must be one of the allowed values
+    const type = PROPERTY_TYPES.includes(propertyType) ? propertyType : 'Room';
 
     const isNegotiableBool = isNegotiable === 'true' || isNegotiable === true;
     const parsedPrice = isNegotiableBool && (!price || parseFloat(price) === 0) ? 0 : parseFloat(price);
@@ -93,8 +127,15 @@ router.post('/', protect, handleUpload, async (req, res) => {
       owner: req.user._id,
       title,
       description,
+      municipality,
       ward: wardNum,
       location,
+      propertyType: type,
+      furnishing: FURNISHING_OPTIONS.includes(furnishing) ? furnishing : '',
+      bedrooms: bedrooms ? Math.max(0, parseInt(bedrooms)) || 0 : 0,
+      bathrooms: bathrooms ? Math.max(0, parseInt(bathrooms)) || 0 : 0,
+      amenities: parseAmenities(amenities),
+      preferredTenant: TENANT_OPTIONS.includes(preferredTenant) ? preferredTenant : 'Any',
       price: parsedPrice,
       isNegotiable: isNegotiableBool,
       images: imagePaths,
@@ -119,14 +160,48 @@ router.post('/', protect, handleUpload, async (req, res) => {
 // @access  Public
 router.get('/', async (req, res) => {
   try {
-    const { ward, minPrice, maxPrice, search } = req.query;
+    const {
+      municipality, ward, minPrice, maxPrice, search,
+      propertyType, furnishing, preferredTenant, amenities,
+    } = req.query;
     const query = {};
 
-    // Filter by Ward
+    // Filter by Municipality
+    if (municipality) {
+      query.municipality = municipality;
+    }
+
+    // Filter by Ward (allow up to 15 now)
     if (ward) {
       const wardNum = parseInt(ward);
-      if (!isNaN(wardNum) && wardNum >= 1 && wardNum <= 10) {
+      if (!isNaN(wardNum) && wardNum >= 1 && wardNum <= 15) {
         query.ward = wardNum;
+      }
+    }
+
+    // Filter by property type
+    if (propertyType && PROPERTY_TYPES.includes(propertyType)) {
+      query.propertyType = propertyType;
+    }
+
+    // Filter by furnishing status
+    if (furnishing && FURNISHING_OPTIONS.includes(furnishing)) {
+      query.furnishing = furnishing;
+    }
+
+    // Filter by preferred tenant
+    if (preferredTenant && TENANT_OPTIONS.includes(preferredTenant)) {
+      query.preferredTenant = preferredTenant;
+    }
+
+    // Filter by amenities (comma-separated). Listing must have ALL requested.
+    if (amenities) {
+      const wanted = String(amenities)
+        .split(',')
+        .map((a) => a.trim())
+        .filter((a) => AMENITIES.includes(a));
+      if (wanted.length > 0) {
+        query.amenities = { $all: wanted };
       }
     }
 
@@ -137,12 +212,13 @@ router.get('/', async (req, res) => {
       if (maxPrice) query.price.$lte = parseFloat(maxPrice);
     }
 
-    // Filter by text search (title/location/description)
+    // Filter by text search (title/location/description/municipality)
     if (search) {
       query.$or = [
         { title: { $regex: search, $options: 'i' } },
         { location: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
+        { municipality: { $regex: search, $options: 'i' } },
       ];
     }
 
@@ -164,6 +240,56 @@ router.get('/my', protect, async (req, res) => {
   try {
     const listings = await Listing.find({ owner: req.user._id }).sort({ createdAt: -1 });
     res.json({ success: true, count: listings.length, data: listings });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @desc    Get the current user's saved (favorite) listings
+// @route   GET /api/listings/saved
+// @access  Private
+router.get('/saved', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).populate({
+      path: 'savedListings',
+      populate: { path: 'owner', select: 'name email phone' },
+    });
+    const saved = (user?.savedListings || []).filter(Boolean);
+    res.json({ success: true, count: saved.length, data: saved });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @desc    Save / bookmark a listing
+// @route   POST /api/listings/:id/save
+// @access  Private
+router.post('/:id/save', protect, async (req, res) => {
+  try {
+    const listing = await Listing.findById(req.params.id);
+    if (!listing) {
+      return res.status(404).json({ success: false, message: 'Listing not found' });
+    }
+    await User.updateOne(
+      { _id: req.user._id },
+      { $addToSet: { savedListings: listing._id } }
+    );
+    res.json({ success: true, message: 'Listing saved' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @desc    Remove a listing from saved
+// @route   DELETE /api/listings/:id/save
+// @access  Private
+router.delete('/:id/save', protect, async (req, res) => {
+  try {
+    await User.updateOne(
+      { _id: req.user._id },
+      { $pull: { savedListings: req.params.id } }
+    );
+    res.json({ success: true, message: 'Listing removed from saved' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -238,13 +364,26 @@ router.put('/:id', protect, handleUpload, async (req, res) => {
       return res.status(401).json({ success: false, message: 'Not authorized to update this listing' });
     }
 
-    const { title, description, ward, location, price, contactName, contactPhone, isNegotiable } = req.body;
+    const {
+      title, description, municipality, ward, location, price,
+      contactName, contactPhone, isNegotiable,
+      propertyType, furnishing, bedrooms, bathrooms, amenities, preferredTenant,
+    } = req.body;
 
-    // Parse fields
+    // Resolve the municipality being saved (new value or the existing one) so
+    // the ward range is validated against the correct local level.
+    const effectiveMunicipality = municipality || listing.municipality;
+
+    if (municipality) listing.municipality = municipality;
+
+    // Parse / validate ward against the effective municipality's ward range
     if (ward) {
       const wardNum = parseInt(ward);
-      if (isNaN(wardNum) || wardNum < 1 || wardNum > 10) {
-        return res.status(400).json({ success: false, message: 'Ward number must be between 1 and 10' });
+      if (!isValidWard(effectiveMunicipality, wardNum)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please select a valid ward number for the chosen municipality',
+        });
       }
       listing.ward = wardNum;
     }
@@ -262,6 +401,16 @@ router.put('/:id', protect, handleUpload, async (req, res) => {
     if (location) listing.location = location;
     if (contactName) listing.contactName = contactName;
     if (contactPhone) listing.contactPhone = contactPhone;
+
+    // New listing detail fields
+    if (propertyType && PROPERTY_TYPES.includes(propertyType)) listing.propertyType = propertyType;
+    if (furnishing !== undefined) {
+      listing.furnishing = FURNISHING_OPTIONS.includes(furnishing) ? furnishing : '';
+    }
+    if (bedrooms !== undefined) listing.bedrooms = Math.max(0, parseInt(bedrooms)) || 0;
+    if (bathrooms !== undefined) listing.bathrooms = Math.max(0, parseInt(bathrooms)) || 0;
+    if (amenities !== undefined) listing.amenities = parseAmenities(amenities);
+    if (preferredTenant && TENANT_OPTIONS.includes(preferredTenant)) listing.preferredTenant = preferredTenant;
 
     // Handle images update if new files are uploaded
     if (req.files && req.files.length > 0) {

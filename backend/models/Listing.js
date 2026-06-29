@@ -17,16 +17,52 @@ const ListingSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Please add a description of the space'],
     },
+    municipality: {
+      type: String,
+      required: [true, 'Please select the municipality / rural municipality'],
+      trim: true,
+    },
     ward: {
       type: Number,
-      required: [true, 'Please specify Birtamode ward number (1-10)'],
-      min: [1, 'Ward number must be between 1 and 10'],
-      max: [10, 'Ward number must be between 1 and 10'],
+      required: [true, 'Please specify the ward number'],
+      min: [1, 'Ward number must be at least 1'],
+      max: [15, 'Ward number cannot be more than 15'],
     },
+    // Tole / chowk / detailed area within the ward (e.g. "Anarmani Chowk").
     location: {
       type: String,
-      required: [true, 'Please add detailed location info'],
+      required: [true, 'Please add the tole / area location'],
       trim: true,
+    },
+    propertyType: {
+      type: String,
+      enum: ['Room', 'Flat', 'Apartment', 'House', 'Shutter/Shop', 'Hostel'],
+      required: [true, 'Please select the property type'],
+      default: 'Room',
+    },
+    furnishing: {
+      type: String,
+      enum: ['Furnished', 'Semi-furnished', 'Unfurnished', ''],
+      default: '',
+    },
+    bedrooms: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    bathrooms: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    amenities: {
+      type: [String],
+      default: [],
+    },
+    preferredTenant: {
+      type: String,
+      enum: ['Any', 'Family', 'Bachelor', 'Students', 'Office'],
+      default: 'Any',
     },
     isNegotiable: {
       type: Boolean,

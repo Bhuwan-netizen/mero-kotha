@@ -10,7 +10,7 @@ const Footer = ({ onOpenDonation }) => {
           <div className="footer-brand">
             <h3>mero <span>kotha</span></h3>
             <p>
-              Your local rental partner in Birtamode, Jhapa, Nepal. Finding and listing rooms, flats, and houses has never been this simple and aesthetic.
+              Your local rental partner across Jhapa, Nepal. Finding and listing rooms, flats, and houses has never been this simple and aesthetic.
             </p>
           </div>
 
@@ -39,7 +39,7 @@ const Footer = ({ onOpenDonation }) => {
 
         <div className="footer-bottom">
           <p style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
-            © {new Date().getFullYear()} Mero Kotha. Made with <Heart size={14} color="var(--primary)" fill="var(--primary)" /> for Birtamode, Jhapa, Nepal.
+            © {new Date().getFullYear()} Mero Kotha. Made with <Heart size={14} color="var(--primary)" fill="var(--primary)" /> for Jhapa, Nepal.
           </p>
         </div>
       </div>

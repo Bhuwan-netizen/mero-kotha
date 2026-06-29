@@ -5,10 +5,11 @@ import {
   LayoutDashboard, Home, Users, Trash2, Edit, Eye, AlertCircle,
   Search, ShieldCheck, RefreshCw,
 } from 'lucide-react';
+import { cldImg, IMG } from '../utils/cloudinary';
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 const resolveImg = (img) =>
-  img ? (img.startsWith('http') ? img : `${backendUrl}${img}`)
+  img ? cldImg(img.startsWith('http') ? img : `${backendUrl}${img}`, IMG.adminThumb)
       : 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=150&q=80';
 const fmt = (n) => new Intl.NumberFormat('en-NP').format(n);
 const priceLabel = (l) =>
@@ -112,6 +113,7 @@ const AdminPanel = () => {
     return (
       l.title?.toLowerCase().includes(q) ||
       l.location?.toLowerCase().includes(q) ||
+      l.municipality?.toLowerCase().includes(q) ||
       l.contactName?.toLowerCase().includes(q) ||
       l.contactPhone?.toLowerCase().includes(q) ||
       l.owner?.email?.toLowerCase().includes(q)
@@ -235,7 +237,7 @@ const AdminPanel = () => {
                   <div style={{ flexGrow: 1, minWidth: 200 }}>
                     <h3 style={{ fontSize: '1.05rem', color: 'var(--primary-dark)', marginBottom: '0.2rem' }}>{l.title}</h3>
                     <div style={{ display: 'flex', gap: '0.6rem', fontSize: '0.82rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
-                      <span>Ward {l.ward}</span><span>•</span>
+                      <span>{l.municipality ? `${l.municipality}, ` : ''}Ward {l.ward}</span><span>•</span>
                       <span>{l.location}</span><span>•</span>
                       <strong style={{ color: 'var(--primary)' }}>{priceLabel(l)}</strong>
                     </div>

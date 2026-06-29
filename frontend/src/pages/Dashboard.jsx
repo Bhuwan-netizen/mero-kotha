@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { Plus, Trash2, Eye, Home, AlertCircle, Edit } from 'lucide-react';
+import { cldImg, IMG } from '../utils/cloudinary';
 
 const Dashboard = () => {
   const { user, token, API_URL } = useContext(AuthContext);
@@ -113,7 +114,7 @@ const Dashboard = () => {
           <Home size={48} color="var(--primary)" style={{ margin: '0 auto 1rem', opacity: 0.4 }} />
           <h3 style={{ marginBottom: '0.5rem' }}>No Rooms Listed Yet</h3>
           <p style={{ color: 'var(--text-muted)', maxWidth: '400px', margin: '0 auto', marginBottom: '1.5rem' }}>
-            You haven't listed any rooms, flats, or commercial spaces in Birtamode. Click the button below to post your first listing!
+            You haven't listed any rooms, flats, or commercial spaces in Jhapa yet. Click the button below to post your first listing!
           </p>
           <Link to="/create-listing" className="btn btn-primary">
             Post Your First Room
@@ -130,7 +131,7 @@ const Dashboard = () => {
               const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
               const firstImg = listing.images && listing.images.length > 0 ? listing.images[0] : null;
               const thumbImage = firstImg
-                ? (firstImg.startsWith('http') ? firstImg : `${backendUrl}${firstImg}`)
+                ? cldImg(firstImg.startsWith('http') ? firstImg : `${backendUrl}${firstImg}`, IMG.adminThumb)
                 : 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=150&q=80';
 
               return (
@@ -149,8 +150,9 @@ const Dashboard = () => {
                     <h3 style={{ fontSize: '1.1rem', color: 'var(--primary-dark)', marginBottom: '0.25rem' }}>
                       {listing.title}
                     </h3>
-                    <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                      <span>Ward {listing.ward}</span>
+                    <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+                      {listing.propertyType && <><span>{listing.propertyType}</span><span>•</span></>}
+                      <span>{listing.municipality ? `${listing.municipality}, ` : ''}Ward {listing.ward}</span>
                       <span>•</span>
                       <span>{listing.location}</span>
                       <span>•</span>

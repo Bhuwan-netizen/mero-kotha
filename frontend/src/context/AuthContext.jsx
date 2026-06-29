@@ -6,6 +6,8 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token') || null);
   const [loading, setLoading] = useState(true);
+  // IDs of listings the current user has saved (for quick heart-toggle lookups)
+  const [savedIds, setSavedIds] = useState([]);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -154,10 +156,108 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
+    setSavedIds([]);
+  };
+
+  // ---- Saved / favorite listings ----------------------------------------
+
+  // Load the list of saved listing IDs whenever the user logs in.
+  const refreshSavedIds = async (authToken = token) => {
+    if (!authToken) {
+      setSavedIds([]);
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/listings/saved`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSavedIds(data.data.map((l) => l._id));
+      }
+    } catch (err) {
+      console.error('Error loading saved listings:', err);
+    }
+  };
+
+  useEffect(() => {
+    refreshSavedIds(token);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  const isSaved = (listingId) => savedIds.includes(listingId);
+
+  // Toggle a listing's saved state. Returns the new saved boolean.
+  const toggleSave = async (listingId) => {
+    if (!token) return { success: false, message: 'Please log in to save listings' };
+
+    const currentlySaved = savedIds.includes(listingId);
+    const method = currentlySaved ? 'DELETE' : 'POST';
+
+    // Optimistic UI update
+    setSavedIds((prev) =>
+      currentlySaved ? prev.filter((id) => id !== listingId) : [...prev, listingId]
+    );
+
+    try {
+      const res = await fetch(`${API_URL}/listings/${listingId}/save`, {
+        method,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!data.success) {
+        // Revert on failure
+        setSavedIds((prev) =>
+          currentlySaved ? [...prev, listingId] : prev.filter((id) => id !== listingId)
+        );
+        return { success: false, message: data.message };
+      }
+      return { success: true, saved: !currentlySaved };
+    } catch (err) {
+      setSavedIds((prev) =>
+        currentlySaved ? [...prev, listingId] : prev.filter((id) => id !== listingId)
+      );
+      return { success: false, message: 'Server error, please try again later' };
+    }
+  };
+
+  // Fetch the full saved listing objects (for the Saved page).
+  const fetchSavedListings = async () => {
+    if (!token) return [];
+    try {
+      const res = await fetch(`${API_URL}/listings/saved`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSavedIds(data.data.map((l) => l._id));
+        return data.data;
+      }
+      return [];
+    } catch (err) {
+      console.error('Error fetching saved listings:', err);
+      return [];
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, googleLogin, updatePhone, logout, API_URL }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        loading,
+        login,
+        register,
+        googleLogin,
+        updatePhone,
+        logout,
+        API_URL,
+        savedIds,
+        isSaved,
+        toggleSave,
+        fetchSavedListings,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

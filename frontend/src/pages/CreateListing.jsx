@@ -2,6 +2,14 @@ import React, { useState, useContext, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { Upload, X, AlertCircle, Sparkles } from 'lucide-react';
+import {
+  MUNICIPALITY_NAMES,
+  getWardOptions,
+  PROPERTY_TYPES,
+  FURNISHING_OPTIONS,
+  TENANT_OPTIONS,
+  AMENITIES,
+} from '../constants/jhapa';
 
 const CreateListing = () => {
   const { user, token, API_URL } = useContext(AuthContext);
@@ -11,12 +19,35 @@ const CreateListing = () => {
   // Form State
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [municipality, setMunicipality] = useState(MUNICIPALITY_NAMES[1]); // Birtamod default
   const [ward, setWard] = useState('1');
   const [location, setLocation] = useState('');
+  const [propertyType, setPropertyType] = useState(PROPERTY_TYPES[0]);
+  const [furnishing, setFurnishing] = useState('');
+  const [bedrooms, setBedrooms] = useState('');
+  const [bathrooms, setBathrooms] = useState('');
+  const [amenities, setAmenities] = useState([]);
+  const [preferredTenant, setPreferredTenant] = useState('Any');
   const [price, setPrice] = useState('');
   const [isNegotiable, setIsNegotiable] = useState(false);
   const [contactName, setContactName] = useState(user?.name || '');
   const [contactPhone, setContactPhone] = useState(user?.phone || '');
+
+  // Ward options depend on the selected municipality
+  const wardOptions = getWardOptions(municipality);
+
+  // When municipality changes, reset ward to 1 (its range may differ)
+  const handleMunicipalityChange = (e) => {
+    setMunicipality(e.target.value);
+    setWard('1');
+  };
+
+  // Toggle an amenity checkbox
+  const toggleAmenity = (item) => {
+    setAmenities((prev) =>
+      prev.includes(item) ? prev.filter((a) => a !== item) : [...prev, item]
+    );
+  };
 
   // Image Upload State
   const [selectedImages, setSelectedImages] = useState([]);
@@ -90,7 +121,7 @@ const CreateListing = () => {
     setError('');
 
     // Field validation
-    if (!title || !description || !location || (!isNegotiable && !price) || !contactName || !contactPhone) {
+    if (!title || !description || !municipality || !location || !propertyType || (!isNegotiable && !price) || !contactName || !contactPhone) {
       setError('Please fill in all required fields.');
       return;
     }
@@ -110,8 +141,8 @@ const CreateListing = () => {
     }
 
     const wardNum = parseInt(ward);
-    if (isNaN(wardNum) || wardNum < 1 || wardNum > 10) {
-      setError('Ward number must be between 1 and 10.');
+    if (isNaN(wardNum) || wardNum < 1 || wardNum > wardOptions.length) {
+      setError(`Ward number must be between 1 and ${wardOptions.length} for ${municipality}.`);
       return;
     }
 
@@ -121,8 +152,15 @@ const CreateListing = () => {
     const formData = new FormData();
     formData.append('title', title);
     formData.append('description', description);
+    formData.append('municipality', municipality);
     formData.append('ward', ward);
     formData.append('location', location);
+    formData.append('propertyType', propertyType);
+    formData.append('furnishing', furnishing);
+    formData.append('bedrooms', bedrooms || '0');
+    formData.append('bathrooms', bathrooms || '0');
+    formData.append('amenities', JSON.stringify(amenities));
+    formData.append('preferredTenant', preferredTenant);
     formData.append('price', isNegotiable && !price ? '0' : price);
     formData.append('isNegotiable', isNegotiable);
     formData.append('contactName', contactName);
@@ -166,7 +204,7 @@ const CreateListing = () => {
           Post a Rental Space
         </h1>
         <p style={{ color: 'var(--text-muted)' }}>
-          Fill in the details below to list your room, flat, or house in Birtamode.
+          Fill in the details below to list your room, flat, or house anywhere in Jhapa district.
         </p>
       </div>
 
@@ -193,10 +231,27 @@ const CreateListing = () => {
           />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-          {/* Ward Number */}
+        {/* Municipality + Ward */}
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
           <div className="form-group">
-            <label htmlFor="ward">Ward Number (Birtamode Municipality) *</label>
+            <label htmlFor="municipality">Municipality / Rural Municipality *</label>
+            <select
+              id="municipality"
+              className="form-control"
+              value={municipality}
+              onChange={handleMunicipalityChange}
+              required
+            >
+              {MUNICIPALITY_NAMES.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="ward">Ward *</label>
             <select
               id="ward"
               className="form-control"
@@ -204,9 +259,29 @@ const CreateListing = () => {
               onChange={(e) => setWard(e.target.value)}
               required
             >
-              {[...Array(10)].map((_, i) => (
-                <option key={i + 1} value={i + 1}>
-                  Ward {i + 1}
+              {wardOptions.map((w) => (
+                <option key={w} value={w}>
+                  Ward {w}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Property type + Price */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+          <div className="form-group">
+            <label htmlFor="propertyType">Property Type *</label>
+            <select
+              id="propertyType"
+              className="form-control"
+              value={propertyType}
+              onChange={(e) => setPropertyType(e.target.value)}
+              required
+            >
+              {PROPERTY_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
                 </option>
               ))}
             </select>
@@ -239,18 +314,99 @@ const CreateListing = () => {
           </div>
         </div>
 
-        {/* Location Address */}
+        {/* Tole / Area */}
         <div className="form-group">
-          <label htmlFor="location">Detailed Location Address *</label>
+          <label htmlFor="location">Tole / Area / Landmark *</label>
           <input
             type="text"
             id="location"
             className="form-control"
-            placeholder="e.g. Shanishchare Road, near Devkota Chowk"
+            placeholder="e.g. Anarmani Chowk, near Devkota Chowk"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
             required
           />
+        </div>
+
+        {/* Room details: furnishing, bedrooms, bathrooms, tenant */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+          <div className="form-group">
+            <label htmlFor="furnishing">Furnishing</label>
+            <select
+              id="furnishing"
+              className="form-control"
+              value={furnishing}
+              onChange={(e) => setFurnishing(e.target.value)}
+            >
+              <option value="">Not specified</option>
+              {FURNISHING_OPTIONS.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="preferredTenant">Preferred Tenant</label>
+            <select
+              id="preferredTenant"
+              className="form-control"
+              value={preferredTenant}
+              onChange={(e) => setPreferredTenant(e.target.value)}
+            >
+              {TENANT_OPTIONS.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+          <div className="form-group">
+            <label htmlFor="bedrooms">Bedrooms</label>
+            <input
+              type="number"
+              id="bedrooms"
+              min="0"
+              className="form-control"
+              placeholder="e.g. 2"
+              value={bedrooms}
+              onChange={(e) => setBedrooms(e.target.value)}
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="bathrooms">Bathrooms</label>
+            <input
+              type="number"
+              id="bathrooms"
+              min="0"
+              className="form-control"
+              placeholder="e.g. 1"
+              value={bathrooms}
+              onChange={(e) => setBathrooms(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Amenities */}
+        <div className="form-group">
+          <label>Amenities</label>
+          <div className="amenities-grid">
+            {AMENITIES.map((item) => (
+              <label key={item} className={`amenity-chip ${amenities.includes(item) ? 'selected' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={amenities.includes(item)}
+                  onChange={() => toggleAmenity(item)}
+                  style={{ display: 'none' }}
+                />
+                {item}
+              </label>
+            ))}
+          </div>
         </div>
 
         {/* Description */}

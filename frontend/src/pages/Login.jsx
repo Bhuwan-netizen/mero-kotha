@@ -54,7 +54,7 @@ const Login = () => {
       <div className="auth-wrapper">
         <div className="auth-header">
           <h2>Welcome Back</h2>
-          <p>Login to manage your room listings in Birtamode</p>
+          <p>Login to manage your room listings across Jhapa</p>
         </div>
 
         {error && (

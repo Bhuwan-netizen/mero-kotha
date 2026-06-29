@@ -25,6 +25,7 @@ import Dashboard from './pages/Dashboard';
 import CreateListing from './pages/CreateListing';
 import EditListing from './pages/EditListing';
 import AdminPanel from './pages/AdminPanel';
+import SavedListings from './pages/SavedListings';
 
 function App() {
   const [isDonationOpen, setIsDonationOpen] = useState(false);
@@ -37,20 +38,28 @@ function App() {
       <Router>
         <div className="app-container">
           <Navbar onOpenDonation={openDonationModal} />
-          
+
           <main>
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/listings/:id" element={<ListingDetail />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
-              
+
               {/* Private Routes for Owners */}
               <Route
                 path="/dashboard"
                 element={
                   <PrivateRoute>
                     <Dashboard />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/saved"
+                element={
+                  <PrivateRoute>
+                    <SavedListings />
                   </PrivateRoute>
                 }
               />
@@ -84,7 +93,7 @@ function App() {
           </main>
 
           <Footer onOpenDonation={openDonationModal} />
-          
+
           <DonationModal isOpen={isDonationOpen} onClose={closeDonationModal} />
 
           <PhoneGate />

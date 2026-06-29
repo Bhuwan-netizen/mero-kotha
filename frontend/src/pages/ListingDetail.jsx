@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { MapPin, Calendar, User, Phone, ArrowLeft, Heart, Smartphone } from 'lucide-react';
+import { MapPin, Calendar, User, Phone, ArrowLeft, Heart, Smartphone, MessageCircle, BedDouble, Bath, Sofa, Users, CheckCircle2, Home } from 'lucide-react';
+import { cldImg, IMG } from '../utils/cloudinary';
 
 const ListingDetail = () => {
   const { id } = useParams();
-  const { API_URL } = useContext(AuthContext);
+  const { API_URL, user, isSaved, toggleSave } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const [listing, setListing] = useState(null);
@@ -67,7 +68,24 @@ const ListingDetail = () => {
     );
   }
 
-  const { title, description, ward, location, price, images, contactName, contactPhone, createdAt, isNegotiable } = listing;
+  const {
+    title, description, municipality, ward, location, price, images,
+    contactName, contactPhone, createdAt, isNegotiable,
+    propertyType, furnishing, bedrooms, bathrooms, amenities, preferredTenant,
+  } = listing;
+
+  // Build a WhatsApp link from the contact phone (Nepal +977).
+  const buildWhatsAppLink = (phone) => {
+    if (!phone) return null;
+    let digits = String(phone).replace(/\D/g, '');
+    if (digits.length === 10) digits = `977${digits}`; // local 10-digit number
+    else if (digits.startsWith('0')) digits = `977${digits.slice(1)}`;
+    const text = encodeURIComponent(`Hello, I'm interested in your rental "${title}" listed on Mero Kotha.`);
+    return `https://wa.me/${digits}?text=${text}`;
+  };
+  const whatsappLink = buildWhatsAppLink(contactPhone);
+
+  const saved = isSaved ? isSaved(id) : false;
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
   // Cloudinary images are absolute URLs; older /uploads paths get the backend prefix
@@ -98,11 +116,12 @@ const ListingDetail = () => {
       </h1>
 
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+        {propertyType && <span className="ward-badge-pill">{propertyType}</span>}
         <span className="ward-badge-pill">Ward {ward}</span>
         <span>•</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
           <MapPin size={14} />
-          {location}, Birtamode
+          {location}{municipality ? `, ${municipality}` : ''}
         </span>
         <span>•</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -120,7 +139,7 @@ const ListingDetail = () => {
           {/* Main Display Image */}
           <div className="main-image-container">
             <img
-              src={hasImages ? resolveImg(images[activeImageIndex]) : 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1000&q=80'}
+              src={hasImages ? cldImg(resolveImg(images[activeImageIndex]), IMG.detail) : 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1000&q=80'}
               alt={title}
               className="main-image"
               onError={(e) => {
@@ -140,7 +159,7 @@ const ListingDetail = () => {
                   onClick={() => setActiveImageIndex(index)}
                 >
                   <img
-                    src={resolveImg(imgUrl)}
+                    src={cldImg(resolveImg(imgUrl), IMG.thumb)}
                     alt={`${title} Thumbnail ${index + 1}`}
                     className="thumbnail-img"
                   />
@@ -149,10 +168,45 @@ const ListingDetail = () => {
             </div>
           )}
 
-          {/* Room Description details */}
+          {/* Property specifications */}
           <div className="detail-desc" style={{ marginTop: '2rem', background: 'white', padding: '2rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
             <h3 style={{ borderBottom: '2px solid var(--primary-light)', paddingBottom: '0.5rem', color: 'var(--primary-dark)' }}>
-              Description & Amenities
+              Property Details
+            </h3>
+            <div className="spec-grid">
+              {propertyType && (
+                <div className="spec-box"><Home size={18} /><div><small>Type</small><strong>{propertyType}</strong></div></div>
+              )}
+              {bedrooms > 0 && (
+                <div className="spec-box"><BedDouble size={18} /><div><small>Bedrooms</small><strong>{bedrooms}</strong></div></div>
+              )}
+              {bathrooms > 0 && (
+                <div className="spec-box"><Bath size={18} /><div><small>Bathrooms</small><strong>{bathrooms}</strong></div></div>
+              )}
+              {furnishing && (
+                <div className="spec-box"><Sofa size={18} /><div><small>Furnishing</small><strong>{furnishing}</strong></div></div>
+              )}
+              {preferredTenant && preferredTenant !== 'Any' && (
+                <div className="spec-box"><Users size={18} /><div><small>For</small><strong>{preferredTenant}</strong></div></div>
+              )}
+            </div>
+
+            {amenities && amenities.length > 0 && (
+              <>
+                <h4 style={{ marginTop: '1.5rem', marginBottom: '0.75rem', color: 'var(--primary-dark)' }}>Amenities</h4>
+                <div className="amenities-list">
+                  {amenities.map((a) => (
+                    <span key={a} className="amenity-pill"><CheckCircle2 size={14} /> {a}</span>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Room Description details */}
+          <div className="detail-desc" style={{ marginTop: '1.5rem', background: 'white', padding: '2rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+            <h3 style={{ borderBottom: '2px solid var(--primary-light)', paddingBottom: '0.5rem', color: 'var(--primary-dark)' }}>
+              Description
             </h3>
             <p style={{ marginTop: '1rem', whiteSpace: 'pre-line', fontSize: '1.05rem', color: 'var(--text-main)' }}>
               {description}
@@ -183,13 +237,26 @@ const ListingDetail = () => {
             <div className="detail-meta">
               <div className="meta-item">
                 <MapPin size={18} />
-                <span>Birtamode, Ward {ward}</span>
+                <span>{municipality || 'Jhapa'}, Ward {ward}</span>
               </div>
               <div className="meta-item">
                 <User size={18} />
                 <span>Verified Owner</span>
               </div>
             </div>
+
+            {/* Save / favorite button (logged-in users) */}
+            {user && (
+              <button
+                type="button"
+                onClick={() => toggleSave(id)}
+                className={`btn btn-outline save-detail-btn ${saved ? 'saved' : ''}`}
+                style={{ width: '100%', marginTop: '1rem' }}
+              >
+                <Heart size={16} fill={saved ? 'currentColor' : 'none'} />
+                {saved ? 'Saved' : 'Save this listing'}
+              </button>
+            )}
 
             <div className="detail-contact">
               <h3 style={{ color: 'var(--primary-dark)', marginBottom: '1rem' }}>Interested? Contact Owner</h3>
@@ -210,6 +277,19 @@ const ListingDetail = () => {
                   <Phone size={16} />
                   Call Owner Now
                 </a>
+
+                {whatsappLink && (
+                  <a
+                    href={whatsappLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-whatsapp"
+                    style={{ width: '100%', textDecoration: 'none', marginTop: '0.75rem' }}
+                  >
+                    <MessageCircle size={16} />
+                    Message on WhatsApp
+                  </a>
+                )}
               </div>
             </div>
           </div>
