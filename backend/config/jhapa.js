@@ -28,6 +28,56 @@ const getWardCount = (municipality) => {
   return found ? found.wards : 0;
 };
 
+// Reduce a municipality string to a comparable "core" form: lower-cased, with
+// the trailing "Municipality" / "Rural Municipality" suffix and surrounding
+// whitespace removed. So "Birtamod Municipality", " birtamod ", and
+// "Birtamod" all collapse to "birtamod".
+const coreMunicipality = (value) =>
+  String(value || '')
+    .trim()
+    .replace(/\s+(rural\s+)?municipality$/i, '')
+    .trim()
+    .toLowerCase();
+
+// Known alternate spellings -> canonical core, so historical data still matches.
+const MUNICIPALITY_ALIASES = {
+  birtamode: 'birtamod', // older "Birtamode" spelling used before the rename
+  birtamoad: 'birtamod',
+};
+
+const canonicalCore = (value) => {
+  const core = coreMunicipality(value);
+  return MUNICIPALITY_ALIASES[core] || core;
+};
+
+// Build a Mongo query matcher for a selected municipality that is tolerant of
+// how the value was stored: different casing, a missing "Municipality" suffix,
+// or an older spelling variant. Returns either a plain string (exact, when the
+// name is unknown) or a case-insensitive regex anchored to the core name.
+//
+// This fixes listings that were saved before the Jhapa-wide expansion and so
+// don't match the dropdown value character-for-character, which previously
+// caused them to be hidden when a municipality was selected.
+const buildMunicipalityMatcher = (selected) => {
+  const core = canonicalCore(selected);
+  if (!core) return selected;
+
+  // Collect every stored spelling that should map to this core (the canonical
+  // core plus any aliases that resolve to it).
+  const variants = new Set([core]);
+  Object.keys(MUNICIPALITY_ALIASES).forEach((alias) => {
+    if (MUNICIPALITY_ALIASES[alias] === core) variants.add(alias);
+  });
+
+  const escaped = [...variants].map((v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const alternation = escaped.join('|');
+  // Match the core name optionally followed by a "Municipality" suffix.
+  return {
+    $regex: `^\\s*(${alternation})(\\s+(rural\\s+)?municipality)?\\s*$`,
+    $options: 'i',
+  };
+};
+
 // True if the municipality exists and the ward is within its valid range.
 const isValidWard = (municipality, ward) => {
   const count = getWardCount(municipality);
@@ -57,6 +107,9 @@ module.exports = {
   MUNICIPALITY_NAMES,
   getWardCount,
   isValidWard,
+  coreMunicipality,
+  canonicalCore,
+  buildMunicipalityMatcher,
   PROPERTY_TYPES,
   FURNISHING_OPTIONS,
   TENANT_OPTIONS,

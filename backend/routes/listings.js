@@ -9,6 +9,7 @@ const User = require('../models/User');
 const { protect } = require('../middleware/auth');
 const {
   isValidWard,
+  buildMunicipalityMatcher,
   PROPERTY_TYPES,
   FURNISHING_OPTIONS,
   TENANT_OPTIONS,
@@ -166,9 +167,13 @@ router.get('/', async (req, res) => {
     } = req.query;
     const query = {};
 
-    // Filter by Municipality
+    // Filter by Municipality.
+    // Use a tolerant matcher so listings stored with a slightly different
+    // municipality string (different casing, a missing "Municipality" suffix,
+    // or the older "Birtamode" spelling) are still returned. Exact-string
+    // matching previously hid such listings when a municipality was selected.
     if (municipality) {
-      query.municipality = municipality;
+      query.municipality = buildMunicipalityMatcher(municipality);
     }
 
     // Filter by Ward (allow up to 15 now)

@@ -33,7 +33,7 @@ const Navbar = ({ onOpenDonation }) => {
             onClick={() => setIsOpen(false)}
           >
             <Phone size={15} strokeWidth={2.5} />
-            <span className="nav-contact-dev-text">{'डेभलपर / Developer: '}</span>
+            <span className="nav-contact-dev-text">{'Developer: '}</span>
             <span className="nav-contact-dev-num">9815910188</span>
           </a>
 
