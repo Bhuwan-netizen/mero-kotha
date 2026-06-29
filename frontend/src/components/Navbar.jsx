@@ -1,7 +1,7 @@
 import React, { useContext, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { Home, Menu, X, PlusCircle, LogOut, User, ShieldCheck, Heart } from 'lucide-react';
+import { Home, Menu, X, PlusCircle, LogOut, User, ShieldCheck, Heart, Phone } from 'lucide-react';
 
 const Navbar = ({ onOpenDonation }) => {
   const { user, logout } = useContext(AuthContext);
@@ -17,14 +17,26 @@ const Navbar = ({ onOpenDonation }) => {
   return (
     <nav className="navbar">
       <div className="container nav-container">
-        
+
         {/* Left side brand logo + mobile-only visible auth buttons */}
         <div className="nav-left-group">
           <Link to="/" className="nav-logo" onClick={() => setIsOpen(false)}>
             <Home size={28} strokeWidth={2.5} />
             mero <span>kotha</span>
           </Link>
-          
+
+          {/* Contact Developer / डेभलपर सम्पर्क — sits right after the logo, outside the menu */}
+          <a
+            href="tel:9815910188"
+            className="nav-contact-dev"
+            title="डेभलपर / Developer सम्पर्क: 9815910188"
+            onClick={() => setIsOpen(false)}
+          >
+            <Phone size={15} strokeWidth={2.5} />
+            <span className="nav-contact-dev-text">{'डेभलपर / Developer: '}</span>
+            <span className="nav-contact-dev-num">9815910188</span>
+          </a>
+
           {!user && (
             <div className="nav-auth-buttons-left">
               <Link to="/login" className="nav-link nav-link-login" onClick={() => setIsOpen(false)}>
@@ -139,7 +151,8 @@ const Navbar = ({ onOpenDonation }) => {
           </div>
         </div>
       </div>
-    </nav>);
+    </nav>
+  );
 };
 
 export default Navbar;

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Heart } from 'lucide-react';
+import { Heart, Phone } from 'lucide-react';
 
 const Footer = ({ onOpenDonation }) => {
   return (
@@ -20,6 +20,15 @@ const Footer = ({ onOpenDonation }) => {
               <li><Link to="/">Browse Rooms</Link></li>
               <li><Link to="/login">Owner Login</Link></li>
               <li><Link to="/register">Owner Register</Link></li>
+              <li>
+                <a
+                  href="tel:9815910188"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                >
+                  <Phone size={14} />
+                  {'डेभलपर / Developer: 9815910188'}
+                </a>
+              </li>
             </ul>
           </div>
 

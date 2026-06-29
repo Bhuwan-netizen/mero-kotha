@@ -869,6 +869,26 @@ main {
   gap: 1.5rem;
 }
 
+.nav-contact-dev {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-main);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.nav-contact-dev:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
 .nav-auth-buttons-left {
   display: none;
 }
@@ -938,7 +958,28 @@ main {
   .nav-user-desktop-only {
     display: none;
   }
-  
+
+  /* Keep contact-developer compact next to the logo on phones */
+  .nav-contact-dev {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.72rem;
+    gap: 0.25rem;
+  }
+  .nav-contact-dev-text {
+    display: none;
+  }
+
+  /* Tighten the whole nav row so nothing overflows on small screens */
+  .nav-left-group {
+    gap: 0.6rem;
+  }
+  .nav-auth-buttons-left {
+    gap: 0.5rem;
+  }
+  .nav-actions-visible {
+    gap: 0.75rem;
+  }
+
   .nav-user-mobile-only {
     display: flex;
     flex-direction: column;
@@ -1215,4 +1256,21 @@ main {
 .save-detail-btn.saved {
   color: #e0245e;
   border-color: #e0245e;
+}
+/* Very small phones: keep the navbar from overflowing.
+   Contact-developer collapses to its phone icon (number still in footer +
+   tap-to-call still works via the tel: link and title tooltip). */
+@media (max-width: 480px) {
+  .nav-logo {
+    font-size: 1.25rem;
+  }
+  .nav-contact-dev-num {
+    display: none;
+  }
+  .nav-contact-dev {
+    padding: 0.35rem;
+  }
+  .nav-left-group {
+    gap: 0.5rem;
+  }
 }
