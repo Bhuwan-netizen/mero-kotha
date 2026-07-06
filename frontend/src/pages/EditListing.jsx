@@ -210,7 +210,11 @@ const EditListing = () => {
       const data = await res.json();
 
       if (data.success) {
-        navigate('/dashboard');
+        navigate('/dashboard', {
+          state: data.data?.status === 'pending'
+            ? { flash: 'Your changes were saved. This listing will be re-checked by an admin before it goes public again.' }
+            : undefined,
+        });
       } else {
         setError(data.message || 'Failed to update listing.');
       }

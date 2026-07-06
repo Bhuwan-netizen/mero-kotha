@@ -837,8 +837,8 @@ main {
 }
 
 .qr-placeholder {
-  width: 150px;
-  height: 150px;
+  width: auto;
+  max-width: 220px;
   background-color: #F1F5F9;
   border: 1px solid var(--border);
   margin: 1.5rem auto;

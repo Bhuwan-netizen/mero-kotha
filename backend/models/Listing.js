@@ -91,6 +91,19 @@ const ListingSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Please add a contact phone number'],
     },
+    // Every new listing must be reviewed by an admin before it appears
+    // publicly. Owners can still see their own pending/rejected listings
+    // from their Dashboard.
+    status: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending',
+    },
+    // Optional note from the admin explaining a rejection.
+    rejectionReason: {
+      type: String,
+      default: '',
+    },
   },
   {
     timestamps: true,

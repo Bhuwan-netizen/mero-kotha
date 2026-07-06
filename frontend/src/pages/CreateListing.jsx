@@ -185,7 +185,11 @@ const CreateListing = () => {
       const data = await res.json();
 
       if (data.success) {
-        navigate('/dashboard');
+        navigate('/dashboard', {
+          state: {
+            flash: data.message || 'Your room has been submitted for verification. It will appear publicly once approved by an admin.',
+          },
+        });
       } else {
         setError(data.message || 'Failed to create listing.');
       }

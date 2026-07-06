@@ -3,9 +3,25 @@ import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import {
   LayoutDashboard, Home, Users, Trash2, Edit, Eye, AlertCircle,
-  Search, ShieldCheck, RefreshCw,
+  Search, ShieldCheck, RefreshCw, Clock, CheckCircle2, XCircle,
 } from 'lucide-react';
 import { cldImg, IMG } from '../utils/cloudinary';
+
+const STATUS_STYLES = {
+  approved: { label: 'Approved', color: '#15803D', bg: '#DCFCE7', icon: <CheckCircle2 size={13} /> },
+  pending: { label: 'Pending', color: '#B45309', bg: '#FEF3C7', icon: <Clock size={13} /> },
+  rejected: { label: 'Rejected', color: '#B91C1C', bg: '#FEE2E2', icon: <XCircle size={13} /> },
+};
+
+const StatusBadge = ({ status }) => {
+  const s = STATUS_STYLES[status] || STATUS_STYLES.pending;
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', fontWeight: 700, color: s.color, background: s.bg, padding: '0.2rem 0.55rem', borderRadius: 999 }}>
+      {s.icon}
+      {s.label}
+    </span>
+  );
+};
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 const resolveImg = (img) =>
@@ -38,6 +54,7 @@ const AdminPanel = () => {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [busyId, setBusyId] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('pending');
 
   const authHeaders = { Authorization: `Bearer ${token}` };
 
@@ -88,6 +105,41 @@ const AdminPanel = () => {
     }
   };
 
+  const setListingStatus = async (id, status) => {
+    if (status === 'rejected') {
+      const confirmReject = window.confirm('Reject this listing? The owner will need to edit and resubmit it.');
+      if (!confirmReject) return;
+    }
+    setBusyId(id);
+    try {
+      const res = await fetch(`${API_URL}/admin/listings/${id}/status`, {
+        method: 'PATCH',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const prevStatus = listings.find((l) => l._id === id)?.status;
+        setListings((prev) => prev.map((l) => (l._id === id ? data.data : l)));
+        if (prevStatus !== status) {
+          setStats((prev) => {
+            if (!prev) return prev;
+            const wasPending = prevStatus === 'pending';
+            const isPending = status === 'pending';
+            if (wasPending === isPending) return prev;
+            return { ...prev, pendingCount: Math.max(0, prev.pendingCount + (isPending ? 1 : -1)) };
+          });
+        }
+      } else {
+        alert(data.message || 'Failed to update listing status');
+      }
+    } catch {
+      alert('Server error while updating listing status');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const deleteUser = async (id) => {
     if (!window.confirm('Delete this user AND all of their listings permanently? This cannot be undone.')) return;
     setBusyId(id);
@@ -107,18 +159,20 @@ const AdminPanel = () => {
     }
   };
 
-  const filteredListings = listings.filter((l) => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return (
-      l.title?.toLowerCase().includes(q) ||
-      l.location?.toLowerCase().includes(q) ||
-      l.municipality?.toLowerCase().includes(q) ||
-      l.contactName?.toLowerCase().includes(q) ||
-      l.contactPhone?.toLowerCase().includes(q) ||
-      l.owner?.email?.toLowerCase().includes(q)
-    );
-  });
+  const filteredListings = listings
+    .filter((l) => statusFilter === 'all' || l.status === statusFilter)
+    .filter((l) => {
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      return (
+        l.title?.toLowerCase().includes(q) ||
+        l.location?.toLowerCase().includes(q) ||
+        l.municipality?.toLowerCase().includes(q) ||
+        l.contactName?.toLowerCase().includes(q) ||
+        l.contactPhone?.toLowerCase().includes(q) ||
+        l.owner?.email?.toLowerCase().includes(q)
+      );
+    });
 
   const filteredUsers = users.filter((u) => {
     if (!search.trim()) return true;
@@ -157,7 +211,7 @@ const AdminPanel = () => {
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
         {tabBtn('overview', 'Overview', <LayoutDashboard size={16} />)}
-        {tabBtn('listings', `Listings (${listings.length})`, <Home size={16} />)}
+        {tabBtn('listings', `Listings (${listings.length})${stats?.pendingCount ? ` • ${stats.pendingCount} pending` : ''}`, <Home size={16} />)}
         {tabBtn('users', `Users (${users.length})`, <Users size={16} />)}
       </div>
 
@@ -180,6 +234,7 @@ const AdminPanel = () => {
             <div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
                 <StatCard icon={<Home size={22} />} label="Total Listings" value={fmt(stats.totalListings)} />
+                <StatCard icon={<Clock size={22} />} label="Pending Verification" value={fmt(stats.pendingCount || 0)} />
                 <StatCard icon={<Users size={22} />} label="Registered Users" value={fmt(stats.totalUsers)} />
                 <StatCard icon={<ShieldCheck size={22} />} label="Admins" value={fmt(stats.totalAdmins)} />
                 <StatCard icon={<LayoutDashboard size={22} />} label="Negotiable Listings" value={fmt(stats.negotiableCount)} />
@@ -227,37 +282,67 @@ const AdminPanel = () => {
 
           {/* LISTINGS */}
           {tab === 'listings' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {filteredListings.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', padding: '2rem', textAlign: 'center' }}>No listings found.</p>
-              ) : filteredListings.map((l) => (
-                <div key={l._id} style={{ display: 'flex', gap: '1rem', background: 'white', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '0.85rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <img src={resolveImg(l.images?.[0])} alt={l.title} style={{ width: 70, height: 70, objectFit: 'cover', borderRadius: 'var(--radius-sm)', background: '#F1F5F9' }}
-                    onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=150&q=80'; }} />
-                  <div style={{ flexGrow: 1, minWidth: 200 }}>
-                    <h3 style={{ fontSize: '1.05rem', color: 'var(--primary-dark)', marginBottom: '0.2rem' }}>{l.title}</h3>
-                    <div style={{ display: 'flex', gap: '0.6rem', fontSize: '0.82rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
-                      <span>{l.municipality ? `${l.municipality}, ` : ''}Ward {l.ward}</span><span>•</span>
-                      <span>{l.location}</span><span>•</span>
-                      <strong style={{ color: 'var(--primary)' }}>{priceLabel(l)}</strong>
+            <div>
+              {/* Status filter chips */}
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+                {['pending', 'approved', 'rejected', 'all'].map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setStatusFilter(s)}
+                    className={statusFilter === s ? 'btn btn-primary' : 'btn btn-outline'}
+                    style={{ padding: '0.4rem 0.9rem', fontSize: '0.82rem', textTransform: 'capitalize' }}
+                  >
+                    {s === 'all' ? 'All' : s}
+                    {s === 'pending' && stats?.pendingCount ? ` (${stats.pendingCount})` : ''}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {filteredListings.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted)', padding: '2rem', textAlign: 'center' }}>No listings found.</p>
+                ) : filteredListings.map((l) => (
+                  <div key={l._id} style={{ display: 'flex', gap: '1rem', background: 'white', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '0.85rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <img src={resolveImg(l.images?.[0])} alt={l.title} style={{ width: 70, height: 70, objectFit: 'cover', borderRadius: 'var(--radius-sm)', background: '#F1F5F9' }}
+                      onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=150&q=80'; }} />
+                    <div style={{ flexGrow: 1, minWidth: 200 }}>
+                      <h3 style={{ fontSize: '1.05rem', color: 'var(--primary-dark)', marginBottom: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {l.title}
+                        <StatusBadge status={l.status} />
+                      </h3>
+                      <div style={{ display: 'flex', gap: '0.6rem', fontSize: '0.82rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+                        <span>{l.municipality ? `${l.municipality}, ` : ''}Ward {l.ward}</span><span>•</span>
+                        <span>{l.location}</span><span>•</span>
+                        <strong style={{ color: 'var(--primary)' }}>{priceLabel(l)}</strong>
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                        Owner: {l.owner?.name || 'Unknown'} {l.owner?.email ? `(${l.owner.email})` : ''}
+                      </div>
                     </div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                      Owner: {l.owner?.name || 'Unknown'} {l.owner?.email ? `(${l.owner.email})` : ''}
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      {l.status !== 'approved' && (
+                        <button onClick={() => setListingStatus(l._id, 'approved')} className="btn btn-primary" style={{ padding: '0.45rem 0.8rem', fontSize: '0.85rem' }} disabled={busyId === l._id}>
+                          <CheckCircle2 size={15} /> Approve
+                        </button>
+                      )}
+                      {l.status !== 'rejected' && (
+                        <button onClick={() => setListingStatus(l._id, 'rejected')} className="btn btn-outline" style={{ padding: '0.45rem 0.8rem', fontSize: '0.85rem', borderColor: '#B91C1C', color: '#B91C1C' }} disabled={busyId === l._id}>
+                          <XCircle size={15} /> Reject
+                        </button>
+                      )}
+                      <Link to={`/listings/${l._id}`} className="btn btn-outline" style={{ padding: '0.45rem 0.8rem', fontSize: '0.85rem' }}>
+                        <Eye size={15} /> View
+                      </Link>
+                      <Link to={`/edit-listing/${l._id}`} className="btn btn-outline" style={{ padding: '0.45rem 0.8rem', fontSize: '0.85rem', borderColor: 'var(--primary)', color: 'var(--primary)' }}>
+                        <Edit size={15} /> Edit
+                      </Link>
+                      <button onClick={() => deleteListing(l._id)} className="btn btn-danger" style={{ padding: '0.45rem 0.8rem', fontSize: '0.85rem' }} disabled={busyId === l._id}>
+                        <Trash2 size={15} /> {busyId === l._id ? '...' : 'Delete'}
+                      </button>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <Link to={`/listings/${l._id}`} className="btn btn-outline" style={{ padding: '0.45rem 0.8rem', fontSize: '0.85rem' }}>
-                      <Eye size={15} /> View
-                    </Link>
-                    <Link to={`/edit-listing/${l._id}`} className="btn btn-outline" style={{ padding: '0.45rem 0.8rem', fontSize: '0.85rem', borderColor: 'var(--primary)', color: 'var(--primary)' }}>
-                      <Edit size={15} /> Edit
-                    </Link>
-                    <button onClick={() => deleteListing(l._id)} className="btn btn-danger" style={{ padding: '0.45rem 0.8rem', fontSize: '0.85rem' }} disabled={busyId === l._id}>
-                      <Trash2 size={15} /> {busyId === l._id ? '...' : 'Delete'}
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
 

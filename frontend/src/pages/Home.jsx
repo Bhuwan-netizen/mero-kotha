@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import ListingCard from '../components/ListingCard';
-import { Search, MapPin, SlidersHorizontal, RefreshCw, ChevronDown } from 'lucide-react';
+import { Search, MapPin, SlidersHorizontal, RefreshCw, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   MUNICIPALITY_NAMES,
   getWardOptions,
@@ -11,12 +11,17 @@ import {
   AMENITIES,
 } from '../constants/jhapa';
 
+const PAGE_SIZE = 20;
+
 const Home = () => {
   const { API_URL } = useContext(AuthContext);
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState('');
@@ -32,8 +37,10 @@ const Home = () => {
   // Ward options depend on the selected municipality ([] when "All wards")
   const wardOptions = selectedMunicipality ? getWardOptions(selectedMunicipality) : [];
 
-  // Fetch listings from server
-  const fetchListings = async () => {
+  // Fetch listings from server. `pageToFetch` defaults to the current page,
+  // but callers (filter changes, search submit) pass 1 explicitly so a new
+  // search always starts from the first page of results.
+  const fetchListings = async (pageToFetch = page) => {
     setLoading(true);
     setError(null);
     try {
@@ -48,12 +55,19 @@ const Home = () => {
       if (furnishing) params.append('furnishing', furnishing);
       if (preferredTenant) params.append('preferredTenant', preferredTenant);
       if (amenities.length > 0) params.append('amenities', amenities.join(','));
+      params.append('page', pageToFetch);
+      params.append('limit', PAGE_SIZE);
 
       const res = await fetch(`${API_URL}/listings?${params.toString()}`);
       const data = await res.json();
 
       if (data.success) {
         setListings(data.data);
+        setPage(data.pagination?.page || pageToFetch);
+        setTotalPages(data.pagination?.totalPages || 1);
+        setTotalCount(data.pagination?.totalCount ?? data.count ?? data.data.length);
+        // Scroll back to the top of the results when changing page
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         setError(data.message || 'Failed to fetch rooms');
       }
@@ -65,11 +79,16 @@ const Home = () => {
     }
   };
 
-  // Auto-refetch when a dropdown-style filter changes
+  // Auto-refetch (from page 1) when a dropdown-style filter changes
   useEffect(() => {
-    fetchListings();
+    fetchListings(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMunicipality, selectedWard, propertyType, furnishing, preferredTenant]);
+
+  const goToPage = (nextPage) => {
+    if (nextPage < 1 || nextPage > totalPages || nextPage === page) return;
+    fetchListings(nextPage);
+  };
 
   const handleMunicipalityChange = (e) => {
     setSelectedMunicipality(e.target.value);
@@ -84,7 +103,7 @@ const Home = () => {
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    fetchListings();
+    fetchListings(1);
   };
 
   const handleReset = () => {
@@ -97,12 +116,17 @@ const Home = () => {
     setFurnishing('');
     setPreferredTenant('');
     setAmenities([]);
-    // We fetch again with empty parameters
+    // We fetch again with empty parameters (page 1)
     setLoading(true);
-    fetch(`${API_URL}/listings`)
+    fetch(`${API_URL}/listings?page=1&limit=${PAGE_SIZE}`)
       .then((res) => res.json())
       .then((data) => {
-        if (data.success) setListings(data.data);
+        if (data.success) {
+          setListings(data.data);
+          setPage(1);
+          setTotalPages(data.pagination?.totalPages || 1);
+          setTotalCount(data.pagination?.totalCount ?? data.count ?? data.data.length);
+        }
         setLoading(false);
       })
       .catch((err) => {
@@ -315,7 +339,7 @@ const Home = () => {
             Available Spaces
           </h2>
           <span style={{ color: 'var(--text-muted)', fontSize: '0.95rem', fontWeight: 500 }}>
-            {listings.length} {listings.length === 1 ? 'space' : 'spaces'} found
+            {totalCount} {totalCount === 1 ? 'space' : 'spaces'} found
           </span>
         </div>
 
@@ -352,11 +376,40 @@ const Home = () => {
             </button>
           </div>
         ) : (
-          <div className="listings-grid">
-            {listings.map((listing) => (
-              <ListingCard key={listing._id} listing={listing} />
-            ))}
-          </div>
+          <>
+            <div className="listings-grid">
+              {listings.map((listing) => (
+                <ListingCard key={listing._id} listing={listing} />
+              ))}
+            </div>
+
+            {/* Pagination controls */}
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', margin: '2.5rem 0' }}>
+                <button
+                  onClick={() => goToPage(page - 1)}
+                  disabled={page <= 1}
+                  className="btn btn-outline"
+                  style={{ padding: '0.6rem 1.1rem' }}
+                >
+                  <ChevronLeft size={16} />
+                  Previous
+                </button>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  onClick={() => goToPage(page + 1)}
+                  disabled={page >= totalPages}
+                  className="btn btn-primary"
+                  style={{ padding: '0.6rem 1.1rem' }}
+                >
+                  Next
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

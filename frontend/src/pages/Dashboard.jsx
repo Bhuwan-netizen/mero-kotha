@@ -1,8 +1,24 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { Plus, Trash2, Eye, Home, AlertCircle, Edit } from 'lucide-react';
+import { Plus, Trash2, Eye, Home, AlertCircle, Edit, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { cldImg, IMG } from '../utils/cloudinary';
+
+// Small colored pill showing where a listing stands in the verification process.
+const StatusBadge = ({ status }) => {
+  const map = {
+    approved: { label: 'Approved', color: '#15803D', bg: '#DCFCE7', icon: <CheckCircle2 size={13} /> },
+    pending: { label: 'Pending Verification', color: '#B45309', bg: '#FEF3C7', icon: <Clock size={13} /> },
+    rejected: { label: 'Rejected', color: '#B91C1C', bg: '#FEE2E2', icon: <XCircle size={13} /> },
+  };
+  const s = map[status] || map.pending;
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', fontWeight: 700, color: s.color, background: s.bg, padding: '0.2rem 0.6rem', borderRadius: 999 }}>
+      {s.icon}
+      {s.label}
+    </span>
+  );
+};
 
 const Dashboard = () => {
   const { user, token, API_URL } = useContext(AuthContext);
@@ -10,6 +26,18 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [flash, setFlash] = useState(location.state?.flash || null);
+
+  // Clear the flash message from history state so a manual refresh doesn't
+  // re-show it, while keeping it visible for this render.
+  useEffect(() => {
+    if (location.state?.flash) {
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchMyListings = async () => {
     setLoading(true);
@@ -90,6 +118,13 @@ const Dashboard = () => {
         </Link>
       </div>
 
+      {flash && (
+        <div style={{ padding: '1.25rem 1.5rem', background: '#F0FDF4', border: '1px solid #86EFAC', color: '#166534', borderRadius: 'var(--radius-md)', display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '2rem' }}>
+          <CheckCircle2 size={20} style={{ flexShrink: 0 }} />
+          <p>{flash}</p>
+        </div>
+      )}
+
       {error && (
         <div style={{ padding: '1.5rem', background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', borderRadius: 'var(--radius-md)', display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '2rem' }}>
           <AlertCircle size={20} />
@@ -147,9 +182,15 @@ const Dashboard = () => {
                   />
 
                   <div style={{ flexGrow: 1, minWidth: '200px' }}>
-                    <h3 style={{ fontSize: '1.1rem', color: 'var(--primary-dark)', marginBottom: '0.25rem' }}>
+                    <h3 style={{ fontSize: '1.1rem', color: 'var(--primary-dark)', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
                       {listing.title}
+                      <StatusBadge status={listing.status} />
                     </h3>
+                    {listing.status === 'rejected' && listing.rejectionReason && (
+                      <p style={{ fontSize: '0.8rem', color: '#B91C1C', marginBottom: '0.35rem' }}>
+                        Reason: {listing.rejectionReason}
+                      </p>
+                    )}
                     <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
                       {listing.propertyType && <><span>{listing.propertyType}</span><span>•</span></>}
                       <span>{listing.municipality ? `${listing.municipality}, ` : ''}Ward {listing.ward}</span>

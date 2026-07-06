@@ -20,11 +20,12 @@ const getCloudinaryPublicId = (url) => {
 // @access  Admin
 router.get('/stats', async (req, res) => {
   try {
-    const [totalListings, totalUsers, totalAdmins, negotiableCount, perWard] = await Promise.all([
+    const [totalListings, totalUsers, totalAdmins, negotiableCount, pendingCount, perWard] = await Promise.all([
       Listing.countDocuments(),
       User.countDocuments(),
       User.countDocuments({ role: 'admin' }),
       Listing.countDocuments({ isNegotiable: true }),
+      Listing.countDocuments({ status: 'pending' }),
       Listing.aggregate([
         { $group: { _id: '$ward', count: { $sum: 1 } } },
         { $sort: { _id: 1 } },
@@ -38,6 +39,7 @@ router.get('/stats', async (req, res) => {
         totalUsers,
         totalAdmins,
         negotiableCount,
+        pendingCount,
         perWard, // [{ _id: wardNumber, count }]
       },
     });
@@ -51,8 +53,11 @@ router.get('/stats', async (req, res) => {
 // @access  Admin
 router.get('/listings', async (req, res) => {
   try {
-    const { search } = req.query;
+    const { search, status } = req.query;
     const query = {};
+    if (status && ['pending', 'approved', 'rejected'].includes(status)) {
+      query.status = status;
+    }
     if (search) {
       query.$or = [
         { title: { $regex: search, $options: 'i' } },
@@ -95,6 +100,31 @@ router.get('/users', async (req, res) => {
     }));
 
     res.json({ success: true, count: data.length, data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @desc    Approve or reject a listing (verification step)
+// @route   PATCH /api/admin/listings/:id/status
+// @access  Admin
+router.patch('/listings/:id/status', async (req, res) => {
+  try {
+    const { status, rejectionReason } = req.body;
+    if (!['pending', 'approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status value' });
+    }
+
+    const listing = await Listing.findById(req.params.id);
+    if (!listing) {
+      return res.status(404).json({ success: false, message: 'Listing not found' });
+    }
+
+    listing.status = status;
+    listing.rejectionReason = status === 'rejected' ? (rejectionReason || '') : '';
+    await listing.save();
+
+    res.json({ success: true, data: listing });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

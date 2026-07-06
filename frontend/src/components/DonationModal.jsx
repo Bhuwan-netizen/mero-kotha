@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Smartphone, CheckCircle, Info } from 'lucide-react';
+import esewaQr from '../assets/esewa-qr.png';
 
 const DonationModal = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
@@ -30,9 +31,16 @@ const DonationModal = ({ isOpen, onClose }) => {
             </p>
           </div>
 
-          <div className="qr-placeholder">
-            <Smartphone size={40} color="var(--esewa)" style={{ marginBottom: '0.5rem' }} />
-            <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>Scan via eSewa App</span>
+          <div className="qr-placeholder" style={{ padding: '1rem' }}>
+            <img
+              src={esewaQr}
+              alt="eSewa QR code for Bhuwan Sangroula, 9815910188"
+              style={{ width: '180px', height: '180px', objectFit: 'contain', borderRadius: 'var(--radius-sm)', marginBottom: '0.5rem' }}
+            />
+            <span style={{ fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Smartphone size={16} color="var(--esewa)" />
+              Scan via eSewa App
+            </span>
             <span style={{ fontSize: '0.75rem', marginTop: '0.2rem' }}>eSewa Send Money Option</span>
           </div>
 

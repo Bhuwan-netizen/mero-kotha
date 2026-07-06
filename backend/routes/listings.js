@@ -6,7 +6,7 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const cloudinary = require('../config/cloudinary');
 const Listing = require('../models/Listing');
 const User = require('../models/User');
-const { protect } = require('../middleware/auth');
+const { protect, optionalAuth } = require('../middleware/auth');
 const {
   isValidWard,
   buildMunicipalityMatcher,
@@ -144,7 +144,11 @@ router.post('/', protect, handleUpload, async (req, res) => {
       contactPhone: contactPhone || req.user.phone,
     });
 
-    res.status(201).json({ success: true, data: listing });
+    res.status(201).json({
+      success: true,
+      data: listing,
+      message: 'Your listing has been submitted for verification. It will appear publicly once an admin approves it.',
+    });
   } catch (error) {
     // Remove uploaded images from Cloudinary if creation failed
     if (req.files && req.files.length > 0) {
@@ -164,8 +168,12 @@ router.get('/', async (req, res) => {
     const {
       municipality, ward, minPrice, maxPrice, search,
       propertyType, furnishing, preferredTenant, amenities,
+      page, limit,
     } = req.query;
     const query = {};
+
+    // The public feed only ever shows admin-approved listings.
+    query.status = 'approved';
 
     // Filter by Municipality.
     // Use a tolerant matcher so listings stored with a slightly different
@@ -227,12 +235,31 @@ router.get('/', async (req, res) => {
       ];
     }
 
-    // Get listings sorted by newest first
-    const listings = await Listing.find(query)
-      .populate('owner', 'name email phone')
-      .sort({ createdAt: -1 });
+    // Pagination (20 per page by default)
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20));
+    const skip = (pageNum - 1) * limitNum;
 
-    res.json({ success: true, count: listings.length, data: listings });
+    const [listings, totalCount] = await Promise.all([
+      Listing.find(query)
+        .populate('owner', 'name email phone')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum),
+      Listing.countDocuments(query),
+    ]);
+
+    res.json({
+      success: true,
+      count: totalCount,
+      data: listings,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        totalCount,
+        totalPages: Math.max(1, Math.ceil(totalCount / limitNum)),
+      },
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -302,13 +329,21 @@ router.delete('/:id/save', protect, async (req, res) => {
 
 // @desc    Get single listing details
 // @route   GET /api/listings/:id
-// @access  Public
-router.get('/:id', async (req, res) => {
+// @access  Public (pending/rejected listings are only visible to their owner or an admin)
+router.get('/:id', optionalAuth, async (req, res) => {
   try {
     const listing = await Listing.findById(req.params.id).populate('owner', 'name email phone');
 
     if (!listing) {
       return res.status(404).json({ success: false, message: 'Listing not found' });
+    }
+
+    if (listing.status !== 'approved') {
+      const isOwner = req.user && listing.owner._id.toString() === req.user._id.toString();
+      const isAdmin = req.user && req.user.role === 'admin';
+      if (!isOwner && !isAdmin) {
+        return res.status(404).json({ success: false, message: 'Listing not found' });
+      }
     }
 
     res.json({ success: true, data: listing });
@@ -399,6 +434,13 @@ router.put('/:id', protect, handleUpload, async (req, res) => {
 
     if (price !== undefined) {
       listing.price = (isNegotiable === 'true' || isNegotiable === true) && (!price || parseFloat(price) === 0) ? 0 : parseFloat(price);
+    }
+
+    // A previously rejected listing goes back into the verification queue
+    // once the owner edits it.
+    if (listing.status === 'rejected') {
+      listing.status = 'pending';
+      listing.rejectionReason = '';
     }
 
     if (title) listing.title = title;
