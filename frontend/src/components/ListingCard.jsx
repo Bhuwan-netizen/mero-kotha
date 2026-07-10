@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { MapPin, User, ArrowRight, Heart, BedDouble, Bath } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import { cldImg, IMG } from '../utils/cloudinary';
@@ -11,6 +11,7 @@ const ListingCard = ({ listing }) => {
   } = listing;
 
   const { user, isSaved, toggleSave } = useContext(AuthContext);
+  const routerLocation = useLocation();
 
   // Format price with thousands separator
   const formattedPrice = new Intl.NumberFormat('en-NP', {
@@ -104,7 +105,12 @@ const ListingCard = ({ listing }) => {
             <span>{contactName}</span>
           </div>
 
-          <Link to={`/listings/${_id}`} className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', gap: '0.25rem' }}>
+          <Link
+            to={`/listings/${_id}`}
+            state={{ from: `${routerLocation.pathname}${routerLocation.search}` }}
+            className="btn btn-outline"
+            style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', gap: '0.25rem' }}
+          >
             Details
             <ArrowRight size={14} />
           </Link>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { MapPin, Calendar, User, Phone, ArrowLeft, Heart, Smartphone, MessageCircle, BedDouble, Bath, Sofa, Users, CheckCircle2, Home } from 'lucide-react';
 import { cldImg, IMG } from '../utils/cloudinary';
@@ -8,6 +8,7 @@ const ListingDetail = () => {
   const { id } = useParams();
   const { API_URL, user, isSaved, toggleSave } = useContext(AuthContext);
   const navigate = useNavigate();
+  const routerLocation = useLocation();
 
   const [listing, setListing] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -38,16 +39,15 @@ const ListingDetail = () => {
     fetchListingDetail();
   }, [id, API_URL]);
 
-  // Prefer real browser/history back so the homepage's search & filters
-  // (kept in the URL) are restored. Only fall back to a plain "/" when this
-  // page was opened directly (e.g. a shared link) and there's no in-app
-  // history to go back to.
+  // Return to wherever the user actually came from (Home with its search
+  // still applied, Dashboard, Admin panel, etc). The originating page hands
+  // us its own path+query via router `state` when it links here (see
+  // ListingCard/Dashboard/AdminPanel). We deliberately navigate to that
+  // known, same-site path instead of using navigate(-1)/browser history:
+  // relying on "go back" can walk past the app's own history and out to
+  // whatever the user had open before they ever landed on the site.
   const handleBack = () => {
-    if (window.history.state && window.history.state.idx > 0) {
-      navigate(-1);
-    } else {
-      navigate('/');
-    }
+    navigate(routerLocation.state?.from || '/');
   };
 
   if (loading) {

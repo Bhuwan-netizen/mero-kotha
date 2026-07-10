@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import {
   LayoutDashboard, Home, Users, Trash2, Edit, Eye, AlertCircle,
@@ -45,6 +45,7 @@ const StatCard = ({ icon, label, value }) => (
 
 const AdminPanel = () => {
   const { user, token, API_URL } = useContext(AuthContext);
+  const location = useLocation();
   const [tab, setTab] = useState('overview');
 
   const [stats, setStats] = useState(null);
@@ -330,7 +331,12 @@ const AdminPanel = () => {
                           <XCircle size={15} /> Reject
                         </button>
                       )}
-                      <Link to={`/listings/${l._id}`} className="btn btn-outline" style={{ padding: '0.45rem 0.8rem', fontSize: '0.85rem' }}>
+                      <Link
+                        to={`/listings/${l._id}`}
+                        state={{ from: `${location.pathname}${location.search}` }}
+                        className="btn btn-outline"
+                        style={{ padding: '0.45rem 0.8rem', fontSize: '0.85rem' }}
+                      >
                         <Eye size={15} /> View
                       </Link>
                       <Link to={`/edit-listing/${l._id}`} className="btn btn-outline" style={{ padding: '0.45rem 0.8rem', fontSize: '0.85rem', borderColor: 'var(--primary)', color: 'var(--primary)' }}>

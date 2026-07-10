@@ -56,7 +56,17 @@ const Home = () => {
   // Fetch listings from server. `pageToFetch` defaults to the current page,
   // but callers (filter changes, search submit) pass 1 explicitly so a new
   // search always starts from the first page of results.
-  const fetchListings = async (pageToFetch = page) => {
+  //
+  // `push` controls how the URL update lands in browser history:
+  //  - false (default): REPLACE the current entry. Used for the initial
+  //    page load and pagination, so paging through results doesn't pile up
+  //    history entries.
+  //  - true: PUSH a new entry. Used when the user actually runs a new
+  //    search/filter, so that entry becomes a real "checkpoint" - pressing
+  //    Back undoes that search instead of leaving the site entirely (which
+  //    is what happens if every search only ever replaces the one and only
+  //    Home entry).
+  const fetchListings = async (pageToFetch = page, { push = false } = {}) => {
     setLoading(true);
     setError(null);
     try {
@@ -74,10 +84,9 @@ const Home = () => {
       params.append('page', pageToFetch);
       params.append('limit', PAGE_SIZE);
 
-      // Mirror the query in the address bar (without adding a new history
-      // entry per filter tweak) so the browser's Back button returns here
-      // with these exact results instead of a fresh, filter-less homepage.
-      setSearchParams(params, { replace: true });
+      // Mirror the query in the address bar so the browser's Back button
+      // can return to these exact results instead of a fresh homepage.
+      setSearchParams(params, { replace: !push });
 
       const res = await fetch(`${API_URL}/listings?${params.toString()}`);
       const data = await res.json();
@@ -116,7 +125,7 @@ const Home = () => {
       isFirstFilterRender.current = false;
       return;
     }
-    fetchListings(1);
+    fetchListings(1, { push: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMunicipality, selectedWard, propertyType, furnishing, preferredTenant]);
 
@@ -138,7 +147,7 @@ const Home = () => {
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    fetchListings(1);
+    fetchListings(1, { push: true });
   };
 
   const handleReset = () => {
@@ -151,9 +160,10 @@ const Home = () => {
     setFurnishing('');
     setPreferredTenant('');
     setAmenities([]);
-    // We fetch again with empty parameters (page 1)
+    // We fetch again with empty parameters (page 1). Pushed (not replaced)
+    // so Back can undo a reset the same way it undoes any other search.
     setLoading(true);
-    setSearchParams({ page: '1', limit: String(PAGE_SIZE) }, { replace: true });
+    setSearchParams({ page: '1', limit: String(PAGE_SIZE) }, { replace: false });
     fetch(`${API_URL}/listings?page=1&limit=${PAGE_SIZE}`)
       .then((res) => res.json())
       .then((data) => {
@@ -382,7 +392,7 @@ const Home = () => {
         {error && (
           <div style={{ padding: '2rem', background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', borderRadius: 'var(--radius-md)', textAlign: 'center', marginBottom: '2rem' }}>
             <p style={{ fontWeight: 600 }}>{error}</p>
-            <button onClick={fetchListings} className="btn btn-primary" style={{ marginTop: '1rem' }}>
+            <button onClick={() => fetchListings()} className="btn btn-primary" style={{ marginTop: '1rem' }}>
               Try Again
             </button>
           </div>
