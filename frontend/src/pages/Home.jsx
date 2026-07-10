@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import ListingCard from '../components/ListingCard';
@@ -20,165 +20,156 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
-
-  // Search/filter state is seeded from the URL's query string so that
-  // navigating away (e.g. to a listing's detail page) and then pressing
-  // Back restores the exact same search results instead of a blank
-  // homepage. Every fetch keeps the URL in sync (see fetchListings) so the
-  // browser history entry always reflects what's currently on screen.
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  const [page, setPage] = useState(Number(searchParams.get('page')) || 1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  // Bumped by the "Try Again" button to force the fetch effect below to
+  // re-run without changing any actual filter.
+  const [retryToken, setRetryToken] = useState(0);
 
-  // Search & Filter State
+  // The URL's query string is the single source of truth for every
+  // filter/search value and the current page. Nothing filter-related lives
+  // in its own separate useState - it's all read straight from
+  // searchParams on every render. That's deliberate: React Router updates
+  // searchParams both when we call setSearchParams() AND when the user hits
+  // the browser's Back/Forward buttons (popstate), so the one fetch effect
+  // below (keyed on searchParams) reacts to both the same way. Previously,
+  // filters lived in separate useState that only got written TO the URL
+  // and never read back FROM it after the initial mount - so pressing Back
+  // changed the address bar but the page kept showing whatever was already
+  // on screen. Deriving everything from searchParams fixes that.
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const page = Number(searchParams.get('page')) || 1;
+  const selectedMunicipality = searchParams.get('municipality') || '';
+  const selectedWard = searchParams.get('ward') || '';
+  const propertyType = searchParams.get('propertyType') || '';
+  const furnishing = searchParams.get('furnishing') || '';
+  const preferredTenant = searchParams.get('preferredTenant') || '';
+  const amenities = searchParams.get('amenities') ? searchParams.get('amenities').split(',') : [];
+
+  // Free-text/number fields need their own "draft" state so the URL (and
+  // browser history) isn't touched on every keystroke - only once the
+  // search form is submitted. They're re-synced from the URL whenever it
+  // changes externally (e.g. the user pressing Back), so the boxes don't
+  // show stale text after navigating.
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
-  const [selectedMunicipality, setSelectedMunicipality] = useState(searchParams.get('municipality') || '');
-  const [selectedWard, setSelectedWard] = useState(searchParams.get('ward') || '');
   const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '');
   const [maxPrice, setMaxPrice] = useState(searchParams.get('maxPrice') || '');
-  const [propertyType, setPropertyType] = useState(searchParams.get('propertyType') || '');
-  const [furnishing, setFurnishing] = useState(searchParams.get('furnishing') || '');
-  const [preferredTenant, setPreferredTenant] = useState(searchParams.get('preferredTenant') || '');
-  const [amenities, setAmenities] = useState(
-    searchParams.get('amenities') ? searchParams.get('amenities').split(',') : []
-  );
 
-  // Skips the "reset to page 1" auto-refetch on initial mount, since the
-  // dedicated mount effect below already fetches using the page/filters
-  // restored from the URL.
-  const isFirstFilterRender = useRef(true);
+  useEffect(() => {
+    setSearchTerm(searchParams.get('search') || '');
+    setMinPrice(searchParams.get('minPrice') || '');
+    setMaxPrice(searchParams.get('maxPrice') || '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // Ward options depend on the selected municipality ([] when "All wards")
   const wardOptions = selectedMunicipality ? getWardOptions(selectedMunicipality) : [];
 
-  // Fetch listings from server. `pageToFetch` defaults to the current page,
-  // but callers (filter changes, search submit) pass 1 explicitly so a new
-  // search always starts from the first page of results.
-  //
-  // `push` controls how the URL update lands in browser history:
-  //  - false (default): REPLACE the current entry. Used for the initial
-  //    page load and pagination, so paging through results doesn't pile up
-  //    history entries.
-  //  - true: PUSH a new entry. Used when the user actually runs a new
-  //    search/filter, so that entry becomes a real "checkpoint" - pressing
-  //    Back undoes that search instead of leaving the site entirely (which
-  //    is what happens if every search only ever replaces the one and only
-  //    Home entry).
-  const fetchListings = async (pageToFetch = page, { push = false } = {}) => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Build query string
-      const params = new URLSearchParams();
-      if (selectedMunicipality) params.append('municipality', selectedMunicipality);
-      if (selectedWard) params.append('ward', selectedWard);
-      if (minPrice) params.append('minPrice', minPrice);
-      if (maxPrice) params.append('maxPrice', maxPrice);
-      if (searchTerm) params.append('search', searchTerm);
-      if (propertyType) params.append('propertyType', propertyType);
-      if (furnishing) params.append('furnishing', furnishing);
-      if (preferredTenant) params.append('preferredTenant', preferredTenant);
-      if (amenities.length > 0) params.append('amenities', amenities.join(','));
-      params.append('page', pageToFetch);
-      params.append('limit', PAGE_SIZE);
+  // The one and only place that talks to the API. Runs whenever the URL's
+  // query changes for any reason - a new search, a filter tweak, a page
+  // change, or the browser's Back/Forward buttons - so what's on screen
+  // always matches the address bar.
+  useEffect(() => {
+    const controller = new AbortController();
 
-      // Mirror the query in the address bar so the browser's Back button
-      // can return to these exact results instead of a fresh homepage.
-      setSearchParams(params, { replace: !push });
+    const run = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const params = new URLSearchParams(searchParams);
+        if (!params.get('page')) params.set('page', '1');
+        if (!params.get('limit')) params.set('limit', String(PAGE_SIZE));
 
-      const res = await fetch(`${API_URL}/listings?${params.toString()}`);
-      const data = await res.json();
+        const res = await fetch(`${API_URL}/listings?${params.toString()}`, {
+          signal: controller.signal,
+        });
+        const data = await res.json();
 
-      if (data.success) {
-        setListings(data.data);
-        setPage(data.pagination?.page || pageToFetch);
-        setTotalPages(data.pagination?.totalPages || 1);
-        setTotalCount(data.pagination?.totalCount ?? data.count ?? data.data.length);
-        // Scroll back to the top of the results when changing page
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      } else {
-        setError(data.message || 'Failed to fetch rooms');
+        if (data.success) {
+          setListings(data.data);
+          setTotalPages(data.pagination?.totalPages || 1);
+          setTotalCount(data.pagination?.totalCount ?? data.count ?? data.data.length);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          setError(data.message || 'Failed to fetch rooms');
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error(err);
+          setError('Could not connect to the server. Make sure the backend is running.');
+        }
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error(err);
-      setError('Could not connect to the server. Make sure the backend is running.');
-    } finally {
-      setLoading(false);
+    };
+
+    run();
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, API_URL, retryToken]);
+
+  // Builds a new query string from the current one plus `updates`, and
+  // writes it into the URL/history. Empty values remove that key so the
+  // URL stays clean.
+  //
+  // `push` controls how the update lands in browser history:
+  //  - true (default): PUSH a new entry, so this becomes a real
+  //    "checkpoint" - pressing Back undoes just this one search/filter
+  //    change and lands back on Mero Kotha's previous results, instead of
+  //    leaving the site entirely.
+  //  - false: REPLACE the current entry. Used only for pagination, so
+  //    flipping through result pages doesn't pile up history entries.
+  const updateParams = (updates, { push = true, resetPage = true } = {}) => {
+    const next = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      const isEmpty =
+        value === '' || value === null || value === undefined || (Array.isArray(value) && value.length === 0);
+      if (isEmpty) {
+        next.delete(key);
+      } else {
+        next.set(key, Array.isArray(value) ? value.join(',') : String(value));
+      }
+    });
+    if (resetPage && !('page' in updates)) {
+      next.set('page', '1');
     }
+    next.set('limit', String(PAGE_SIZE));
+    setSearchParams(next, { replace: !push });
   };
-
-  // Initial load: fetch using whatever page/filters were restored from the
-  // URL (e.g. after coming Back from a listing's detail page). Runs once.
-  useEffect(() => {
-    fetchListings(page);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Auto-refetch (from page 1) when a dropdown-style filter changes.
-  // Skipped on the very first render since the mount effect above already
-  // handled the initial fetch - otherwise this would immediately reset
-  // page back to 1 and clobber a restored page from the URL.
-  useEffect(() => {
-    if (isFirstFilterRender.current) {
-      isFirstFilterRender.current = false;
-      return;
-    }
-    fetchListings(1, { push: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMunicipality, selectedWard, propertyType, furnishing, preferredTenant]);
 
   const goToPage = (nextPage) => {
     if (nextPage < 1 || nextPage > totalPages || nextPage === page) return;
-    fetchListings(nextPage);
+    updateParams({ page: nextPage }, { push: false, resetPage: false });
   };
 
   const handleMunicipalityChange = (e) => {
-    setSelectedMunicipality(e.target.value);
-    setSelectedWard(''); // reset ward when municipality changes
+    updateParams({ municipality: e.target.value, ward: '' }); // reset ward when municipality changes
   };
 
+  const handleWardChange = (e) => {
+    updateParams({ ward: e.target.value });
+  };
+
+  const handlePropertyTypeChange = (e) => updateParams({ propertyType: e.target.value });
+  const handleFurnishingChange = (e) => updateParams({ furnishing: e.target.value });
+  const handlePreferredTenantChange = (e) => updateParams({ preferredTenant: e.target.value });
+
   const toggleAmenity = (item) => {
-    setAmenities((prev) =>
-      prev.includes(item) ? prev.filter((a) => a !== item) : [...prev, item]
-    );
+    const next = amenities.includes(item) ? amenities.filter((a) => a !== item) : [...amenities, item];
+    updateParams({ amenities: next });
   };
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    fetchListings(1, { push: true });
+    updateParams({ search: searchTerm, minPrice, maxPrice });
   };
 
   const handleReset = () => {
     setSearchTerm('');
-    setSelectedMunicipality('');
-    setSelectedWard('');
     setMinPrice('');
     setMaxPrice('');
-    setPropertyType('');
-    setFurnishing('');
-    setPreferredTenant('');
-    setAmenities([]);
-    // We fetch again with empty parameters (page 1). Pushed (not replaced)
-    // so Back can undo a reset the same way it undoes any other search.
-    setLoading(true);
     setSearchParams({ page: '1', limit: String(PAGE_SIZE) }, { replace: false });
-    fetch(`${API_URL}/listings?page=1&limit=${PAGE_SIZE}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setListings(data.data);
-          setPage(1);
-          setTotalPages(data.pagination?.totalPages || 1);
-          setTotalCount(data.pagination?.totalCount ?? data.count ?? data.data.length);
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError('Connection error');
-        setLoading(false);
-      });
   };
 
   return (
@@ -243,7 +234,7 @@ const Home = () => {
                 id="ward"
                 className="form-control"
                 value={selectedWard}
-                onChange={(e) => setSelectedWard(e.target.value)}
+                onChange={handleWardChange}
                 disabled={!selectedMunicipality}
               >
                 <option value="">{selectedMunicipality ? 'All wards' : 'Select municipality first'}</option>
@@ -316,7 +307,7 @@ const Home = () => {
                     id="propertyType"
                     className="form-control"
                     value={propertyType}
-                    onChange={(e) => setPropertyType(e.target.value)}
+                    onChange={handlePropertyTypeChange}
                   >
                     <option value="">Any type</option>
                     {PROPERTY_TYPES.map((t) => (
@@ -331,7 +322,7 @@ const Home = () => {
                     id="furnishing"
                     className="form-control"
                     value={furnishing}
-                    onChange={(e) => setFurnishing(e.target.value)}
+                    onChange={handleFurnishingChange}
                   >
                     <option value="">Any</option>
                     {FURNISHING_OPTIONS.map((f) => (
@@ -346,7 +337,7 @@ const Home = () => {
                     id="preferredTenant"
                     className="form-control"
                     value={preferredTenant}
-                    onChange={(e) => setPreferredTenant(e.target.value)}
+                    onChange={handlePreferredTenantChange}
                   >
                     <option value="">Any</option>
                     {TENANT_OPTIONS.filter((t) => t !== 'Any').map((t) => (
@@ -392,7 +383,7 @@ const Home = () => {
         {error && (
           <div style={{ padding: '2rem', background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', borderRadius: 'var(--radius-md)', textAlign: 'center', marginBottom: '2rem' }}>
             <p style={{ fontWeight: 600 }}>{error}</p>
-            <button onClick={() => fetchListings()} className="btn btn-primary" style={{ marginTop: '1rem' }}>
+            <button onClick={() => setRetryToken((n) => n + 1)} className="btn btn-primary" style={{ marginTop: '1rem' }}>
               Try Again
             </button>
           </div>
