@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { MapPin, Calendar, User, Phone, ArrowLeft, Heart, Smartphone, MessageCircle, BedDouble, Bath, Sofa, Users, CheckCircle2, Home } from 'lucide-react';
 import { cldImg, IMG } from '../utils/cloudinary';
@@ -37,6 +37,18 @@ const ListingDetail = () => {
 
     fetchListingDetail();
   }, [id, API_URL]);
+
+  // Prefer real browser/history back so the homepage's search & filters
+  // (kept in the URL) are restored. Only fall back to a plain "/" when this
+  // page was opened directly (e.g. a shared link) and there's no in-app
+  // history to go back to.
+  const handleBack = () => {
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate('/');
+    }
+  };
 
   if (loading) {
     return (
@@ -105,11 +117,15 @@ const ListingDetail = () => {
   return (
     <div className="container" style={{ marginTop: '2rem' }}>
       
-      {/* Back button link */}
-      <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontWeight: 500, marginBottom: '1.5rem' }}>
+      {/* Back button */}
+      <button
+        type="button"
+        onClick={handleBack}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontWeight: 500, marginBottom: '1.5rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'inherit' }}
+      >
         <ArrowLeft size={16} />
         Back to listings
-      </Link>
+      </button>
 
       <h1 style={{ fontSize: '2.2rem', color: 'var(--primary-dark)', marginBottom: '0.5rem', lineHeight: 1.2 }}>
         {title}

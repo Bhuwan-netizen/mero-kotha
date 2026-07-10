@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import ListingCard from '../components/ListingCard';
 import { Search, MapPin, SlidersHorizontal, RefreshCw, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -19,20 +20,35 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
-  const [page, setPage] = useState(1);
+
+  // Search/filter state is seeded from the URL's query string so that
+  // navigating away (e.g. to a listing's detail page) and then pressing
+  // Back restores the exact same search results instead of a blank
+  // homepage. Every fetch keeps the URL in sync (see fetchListings) so the
+  // browser history entry always reflects what's currently on screen.
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [page, setPage] = useState(Number(searchParams.get('page')) || 1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
   // Search & Filter State
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedMunicipality, setSelectedMunicipality] = useState('');
-  const [selectedWard, setSelectedWard] = useState('');
-  const [minPrice, setMinPrice] = useState('');
-  const [maxPrice, setMaxPrice] = useState('');
-  const [propertyType, setPropertyType] = useState('');
-  const [furnishing, setFurnishing] = useState('');
-  const [preferredTenant, setPreferredTenant] = useState('');
-  const [amenities, setAmenities] = useState([]);
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
+  const [selectedMunicipality, setSelectedMunicipality] = useState(searchParams.get('municipality') || '');
+  const [selectedWard, setSelectedWard] = useState(searchParams.get('ward') || '');
+  const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '');
+  const [maxPrice, setMaxPrice] = useState(searchParams.get('maxPrice') || '');
+  const [propertyType, setPropertyType] = useState(searchParams.get('propertyType') || '');
+  const [furnishing, setFurnishing] = useState(searchParams.get('furnishing') || '');
+  const [preferredTenant, setPreferredTenant] = useState(searchParams.get('preferredTenant') || '');
+  const [amenities, setAmenities] = useState(
+    searchParams.get('amenities') ? searchParams.get('amenities').split(',') : []
+  );
+
+  // Skips the "reset to page 1" auto-refetch on initial mount, since the
+  // dedicated mount effect below already fetches using the page/filters
+  // restored from the URL.
+  const isFirstFilterRender = useRef(true);
 
   // Ward options depend on the selected municipality ([] when "All wards")
   const wardOptions = selectedMunicipality ? getWardOptions(selectedMunicipality) : [];
@@ -58,6 +74,11 @@ const Home = () => {
       params.append('page', pageToFetch);
       params.append('limit', PAGE_SIZE);
 
+      // Mirror the query in the address bar (without adding a new history
+      // entry per filter tweak) so the browser's Back button returns here
+      // with these exact results instead of a fresh, filter-less homepage.
+      setSearchParams(params, { replace: true });
+
       const res = await fetch(`${API_URL}/listings?${params.toString()}`);
       const data = await res.json();
 
@@ -79,8 +100,22 @@ const Home = () => {
     }
   };
 
-  // Auto-refetch (from page 1) when a dropdown-style filter changes
+  // Initial load: fetch using whatever page/filters were restored from the
+  // URL (e.g. after coming Back from a listing's detail page). Runs once.
   useEffect(() => {
+    fetchListings(page);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-refetch (from page 1) when a dropdown-style filter changes.
+  // Skipped on the very first render since the mount effect above already
+  // handled the initial fetch - otherwise this would immediately reset
+  // page back to 1 and clobber a restored page from the URL.
+  useEffect(() => {
+    if (isFirstFilterRender.current) {
+      isFirstFilterRender.current = false;
+      return;
+    }
     fetchListings(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMunicipality, selectedWard, propertyType, furnishing, preferredTenant]);
@@ -118,6 +153,7 @@ const Home = () => {
     setAmenities([]);
     // We fetch again with empty parameters (page 1)
     setLoading(true);
+    setSearchParams({ page: '1', limit: String(PAGE_SIZE) }, { replace: true });
     fetch(`${API_URL}/listings?page=1&limit=${PAGE_SIZE}`)
       .then((res) => res.json())
       .then((data) => {
