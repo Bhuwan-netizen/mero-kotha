@@ -10,6 +10,35 @@ export const AuthProvider = ({ children }) => {
   const [savedIds, setSavedIds] = useState([]);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+
+  // Render's free tier spins the backend down after ~15 min of inactivity.
+  // The very next request has to wait for a cold start, which can take
+  // 20-50s - long enough that the login/register fetch fails outright and
+  // the user has to submit a second time. Firing a harmless GET the moment
+  // the app loads (regardless of login state) kicks that wake-up off early,
+  // so by the time someone finishes typing their credentials the server is
+  // usually already warm.
+  useEffect(() => {
+    fetch(BACKEND_URL).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Retries a fetch once after a short delay if the first attempt fails
+  // outright (e.g. connection refused/reset while Render is still waking
+  // up). This is the safety net for users who submit before the warm-up
+  // ping above has finished.
+  const fetchWithRetry = async (url, options, retries = 1, delayMs = 4000) => {
+    try {
+      return await fetch(url, options);
+    } catch (err) {
+      if (retries > 0) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        return fetchWithRetry(url, options, retries - 1, delayMs);
+      }
+      throw err;
+    }
+  };
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -53,7 +82,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const res = await fetch(`${API_URL}/auth/login`, {
+      const res = await fetchWithRetry(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -78,7 +107,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (name, email, phone, password, adminCode) => {
     try {
-      const res = await fetch(`${API_URL}/auth/register`, {
+      const res = await fetchWithRetry(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -104,7 +133,7 @@ export const AuthProvider = ({ children }) => {
   // Sign in / sign up with a Google ID token (credential)
   const googleLogin = async (credential) => {
     try {
-      const res = await fetch(`${API_URL}/auth/google`, {
+      const res = await fetchWithRetry(`${API_URL}/auth/google`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
