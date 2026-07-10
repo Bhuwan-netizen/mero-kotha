@@ -29,7 +29,7 @@ const Login = () => {
     }
 
     setIsSubmitting(true);
-    const result = await login(email, password);
+    const result = await login(email.trim(), password);
     setIsSubmitting(false);
 
     if (result.success) {

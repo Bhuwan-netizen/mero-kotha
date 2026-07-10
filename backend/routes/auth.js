@@ -21,6 +21,9 @@ const generateToken = (id) => {
 router.post('/register', async (req, res) => {
   const { name, email, phone, password, adminCode } = req.body;
 
+  // Normalize email so stray whitespace/case never causes a false mismatch
+  const normalizedEmail = (email || '').trim().toLowerCase();
+
   // Phone number is required for email/password registration
   if (!phone || !phone.trim()) {
     return res.status(400).json({ success: false, message: 'Please add a contact phone number' });
@@ -28,7 +31,7 @@ router.post('/register', async (req, res) => {
 
   try {
     // Check if user exists
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({ email: normalizedEmail });
 
     if (userExists) {
       return res.status(400).json({ success: false, message: 'User already exists with this email' });
@@ -47,7 +50,7 @@ router.post('/register', async (req, res) => {
     // Create user
     const user = await User.create({
       name,
-      email,
+      email: normalizedEmail,
       phone,
       password,
       role,
@@ -77,9 +80,15 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
+  // Normalize email the same way it's normalized at registration time.
+  // Without this, a stray leading/trailing space (common with mobile
+  // keyboards/autofill/copy-paste) makes findOne() miss an otherwise
+  // correct account and the user sees "Invalid email or password".
+  const normalizedEmail = (email || '').trim().toLowerCase();
+
   try {
     // Check for user
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email: normalizedEmail }).select('+password');
 
     if (user && (await user.matchPassword(password))) {
       res.json({
@@ -141,7 +150,8 @@ router.post('/google', async (req, res) => {
     });
 
     const payload = ticket.getPayload();
-    const { sub: googleId, email, name, email_verified } = payload;
+    const { sub: googleId, name, email_verified } = payload;
+    const email = (payload.email || '').trim().toLowerCase();
 
     if (!email_verified) {
       return res.status(401).json({ success: false, message: 'Google account email is not verified' });

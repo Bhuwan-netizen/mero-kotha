@@ -44,7 +44,7 @@ const Register = () => {
     }
 
     setIsSubmitting(true);
-    const result = await register(name, email, phone, password, showAdminCode ? adminCode : '');
+    const result = await register(name, email.trim(), phone, password, showAdminCode ? adminCode : '');
     setIsSubmitting(false);
 
     if (result.success) {
