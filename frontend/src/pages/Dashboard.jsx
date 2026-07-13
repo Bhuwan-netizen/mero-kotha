@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { Plus, Trash2, Eye, Home, AlertCircle, Edit, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { Plus, Trash2, Eye, Home, AlertCircle, Edit, CheckCircle2, Clock, XCircle, Rocket } from 'lucide-react';
 import { cldImg, IMG } from '../utils/cloudinary';
 
 // Small colored pill showing where a listing stands in the verification process.
@@ -185,6 +185,11 @@ const Dashboard = () => {
                     <h3 style={{ fontSize: '1.1rem', color: 'var(--primary-dark)', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
                       {listing.title}
                       <StatusBadge status={listing.status} />
+                      {listing.isBoosted && (
+                        <span className="admin-featured-pill">
+                          <Rocket size={12} fill="currentColor" /> Featured
+                        </span>
+                      )}
                     </h3>
                     {listing.status === 'rejected' && listing.rejectionReason && (
                       <p style={{ fontSize: '0.8rem', color: '#B91C1C', marginBottom: '0.35rem' }}>

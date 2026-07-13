@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { MapPin, User, ArrowRight, Heart, BedDouble, Bath } from 'lucide-react';
+import { MapPin, User, ArrowRight, Heart, BedDouble, Bath, Rocket } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import { cldImg, IMG } from '../utils/cloudinary';
 
@@ -8,6 +8,7 @@ const ListingCard = ({ listing }) => {
   const {
     _id, title, description, municipality, ward, location, price, images,
     contactName, isNegotiable, propertyType, bedrooms, bathrooms, furnishing,
+    isBoosted,
   } = listing;
 
   const { user, isSaved, toggleSave } = useContext(AuthContext);
@@ -52,13 +53,19 @@ const ListingCard = ({ listing }) => {
   };
 
   return (
-    <div className="listing-card">
+    <div className={`listing-card ${isBoosted ? 'listing-card-featured' : ''}`}>
       <div className="card-img-wrapper">
         <img src={mainImage} alt={title} className="card-img" onError={(e) => {
           e.target.onerror = null;
           e.target.src = 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=600&q=80';
         }} />
-        <span className="card-badge">{shortMuni ? `${shortMuni} • W${ward}` : `Ward ${ward}`}</span>
+        {isBoosted && (
+          <span className="card-featured-badge">
+            <Rocket size={12} fill="currentColor" />
+            Featured
+          </span>
+        )}
+        <span className="card-badge" style={isBoosted ? { top: '2.75rem' } : undefined}>{shortMuni ? `${shortMuni} • W${ward}` : `Ward ${ward}`}</span>
         <span className="card-price" style={{ fontSize: isNegotiable && price <= 0 ? '0.9rem' : '1.1rem', padding: '0.4rem 0.75rem' }}>
           {renderPriceBadge()}
         </span>

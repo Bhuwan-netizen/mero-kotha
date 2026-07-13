@@ -20,12 +20,13 @@ const getCloudinaryPublicId = (url) => {
 // @access  Admin
 router.get('/stats', async (req, res) => {
   try {
-    const [totalListings, totalUsers, totalAdmins, negotiableCount, pendingCount, perWard] = await Promise.all([
+    const [totalListings, totalUsers, totalAdmins, negotiableCount, pendingCount, boostedCount, perWard] = await Promise.all([
       Listing.countDocuments(),
       User.countDocuments(),
       User.countDocuments({ role: 'admin' }),
       Listing.countDocuments({ isNegotiable: true }),
       Listing.countDocuments({ status: 'pending' }),
+      Listing.countDocuments({ isBoosted: true }),
       Listing.aggregate([
         { $group: { _id: '$ward', count: { $sum: 1 } } },
         { $sort: { _id: 1 } },
@@ -40,6 +41,7 @@ router.get('/stats', async (req, res) => {
         totalAdmins,
         negotiableCount,
         pendingCount,
+        boostedCount,
         perWard, // [{ _id: wardNumber, count }]
       },
     });
@@ -122,6 +124,30 @@ router.patch('/listings/:id/status', async (req, res) => {
 
     listing.status = status;
     listing.rejectionReason = status === 'rejected' ? (rejectionReason || '') : '';
+    await listing.save();
+
+    res.json({ success: true, data: listing });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @desc    Boost (feature) or un-boost a listing. Boosted listings are
+//          pinned to the top of every public listings page/filter until an
+//          admin turns the boost off - there's no automatic expiry.
+// @route   PATCH /api/admin/listings/:id/boost
+// @access  Admin
+router.patch('/listings/:id/boost', async (req, res) => {
+  try {
+    const { boost } = req.body;
+
+    const listing = await Listing.findById(req.params.id);
+    if (!listing) {
+      return res.status(404).json({ success: false, message: 'Listing not found' });
+    }
+
+    listing.isBoosted = !!boost;
+    listing.boostedAt = listing.isBoosted ? new Date() : null;
     await listing.save();
 
     res.json({ success: true, data: listing });

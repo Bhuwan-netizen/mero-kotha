@@ -104,6 +104,20 @@ const ListingSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    // Admin "boost" (a.k.a. Featured). Boosted listings are pinned to the
+    // top of every listings page/filter combination on the site until an
+    // admin turns the boost back off - there is no automatic expiry.
+    isBoosted: {
+      type: Boolean,
+      default: false,
+    },
+    // When the boost was (most recently) turned on. Used to order multiple
+    // boosted listings (most recently boosted first) and is cleared when
+    // the boost is turned off.
+    boostedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

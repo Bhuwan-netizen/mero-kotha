@@ -1165,6 +1165,57 @@ main {
   color: #e0245e;
 }
 
+/* Boosted / Featured listings */
+.listing-card-featured {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.35), var(--shadow-sm);
+}
+.listing-card-featured:hover {
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.45), var(--shadow-lg);
+}
+.card-featured-badge {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background-color: var(--accent);
+  color: #4A3B00;
+  padding: 0.25rem 0.75rem;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 6px rgba(212, 175, 55, 0.4);
+}
+.admin-featured-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #4A3B00;
+  background: var(--accent);
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+}
+.btn-boost {
+  background-color: transparent;
+  border: 1px solid var(--accent);
+  color: #92750D;
+}
+.btn-boost:hover {
+  background-color: #FDF8E9;
+  transform: translateY(-2px);
+}
+.btn-boost.is-boosted {
+  background-color: var(--accent);
+  color: #4A3B00;
+  border-color: var(--accent);
+}
+
 /* Card property-type tag + quick specs */
 .card-tags {
   display: flex;

@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import {
   LayoutDashboard, Home, Users, Trash2, Edit, Eye, AlertCircle,
-  Search, ShieldCheck, RefreshCw, Clock, CheckCircle2, XCircle,
+  Search, ShieldCheck, RefreshCw, Clock, CheckCircle2, XCircle, Rocket,
 } from 'lucide-react';
 import { cldImg, IMG } from '../utils/cloudinary';
 
@@ -56,6 +56,7 @@ const AdminPanel = () => {
   const [search, setSearch] = useState('');
   const [busyId, setBusyId] = useState(null);
   const [statusFilter, setStatusFilter] = useState('pending');
+  const [boostedOnly, setBoostedOnly] = useState(false);
 
   const authHeaders = { Authorization: `Bearer ${token}` };
 
@@ -141,6 +142,32 @@ const AdminPanel = () => {
     }
   };
 
+  // Boost ("Featured") toggle - pins a listing to the top of every public
+  // listings page/filter until an admin turns it back off.
+  const setListingBoost = async (id, boost) => {
+    setBusyId(id);
+    try {
+      const res = await fetch(`${API_URL}/admin/listings/${id}/boost`, {
+        method: 'PATCH',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ boost }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setListings((prev) => prev.map((l) => (l._id === id ? data.data : l)));
+        setStats((prev) =>
+          prev ? { ...prev, boostedCount: Math.max(0, (prev.boostedCount || 0) + (boost ? 1 : -1)) } : prev
+        );
+      } else {
+        alert(data.message || 'Failed to update boost status');
+      }
+    } catch {
+      alert('Server error while updating boost status');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const deleteUser = async (id) => {
     if (!window.confirm('Delete this user AND all of their listings permanently? This cannot be undone.')) return;
     setBusyId(id);
@@ -162,6 +189,7 @@ const AdminPanel = () => {
 
   const filteredListings = listings
     .filter((l) => statusFilter === 'all' || l.status === statusFilter)
+    .filter((l) => !boostedOnly || l.isBoosted)
     .filter((l) => {
       if (!search.trim()) return true;
       const q = search.toLowerCase();
@@ -236,6 +264,7 @@ const AdminPanel = () => {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
                 <StatCard icon={<Home size={22} />} label="Total Listings" value={fmt(stats.totalListings)} />
                 <StatCard icon={<Clock size={22} />} label="Pending Verification" value={fmt(stats.pendingCount || 0)} />
+                <StatCard icon={<Rocket size={22} />} label="Boosted (Featured)" value={fmt(stats.boostedCount || 0)} />
                 <StatCard icon={<Users size={22} />} label="Registered Users" value={fmt(stats.totalUsers)} />
                 <StatCard icon={<ShieldCheck size={22} />} label="Admins" value={fmt(stats.totalAdmins)} />
                 <StatCard icon={<LayoutDashboard size={22} />} label="Negotiable Listings" value={fmt(stats.negotiableCount)} />
@@ -297,6 +326,14 @@ const AdminPanel = () => {
                     {s === 'pending' && stats?.pendingCount ? ` (${stats.pendingCount})` : ''}
                   </button>
                 ))}
+                <button
+                  onClick={() => setBoostedOnly((b) => !b)}
+                  className={boostedOnly ? 'btn btn-boost is-boosted' : 'btn btn-boost'}
+                  style={{ padding: '0.4rem 0.9rem', fontSize: '0.82rem' }}
+                >
+                  <Rocket size={14} />
+                  Boosted only{stats?.boostedCount ? ` (${stats.boostedCount})` : ''}
+                </button>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -310,6 +347,11 @@ const AdminPanel = () => {
                       <h3 style={{ fontSize: '1.05rem', color: 'var(--primary-dark)', marginBottom: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                         {l.title}
                         <StatusBadge status={l.status} />
+                        {l.isBoosted && (
+                          <span className="admin-featured-pill">
+                            <Rocket size={12} fill="currentColor" /> Featured
+                          </span>
+                        )}
                       </h3>
                       <div style={{ display: 'flex', gap: '0.6rem', fontSize: '0.82rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
                         <span>{l.municipality ? `${l.municipality}, ` : ''}Ward {l.ward}</span><span>•</span>
@@ -331,6 +373,15 @@ const AdminPanel = () => {
                           <XCircle size={15} /> Reject
                         </button>
                       )}
+                      <button
+                        onClick={() => setListingBoost(l._id, !l.isBoosted)}
+                        className={l.isBoosted ? 'btn btn-boost is-boosted' : 'btn btn-boost'}
+                        style={{ padding: '0.45rem 0.8rem', fontSize: '0.85rem' }}
+                        disabled={busyId === l._id}
+                        title={l.isBoosted ? 'Remove this listing from the top of every page' : 'Pin this listing to the top of every page until un-boosted'}
+                      >
+                        <Rocket size={15} /> {l.isBoosted ? 'Unboost' : 'Boost'}
+                      </button>
                       <Link
                         to={`/listings/${l._id}`}
                         state={{ from: `${location.pathname}${location.search}` }}

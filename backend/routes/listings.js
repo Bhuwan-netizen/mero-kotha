@@ -240,23 +240,42 @@ router.get('/', async (req, res) => {
     const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20));
     const skip = (pageNum - 1) * limitNum;
 
-    const [listings, totalCount] = await Promise.all([
-      Listing.find(query)
+    // Boosted ("Featured") listings are pinned to the top of every page of
+    // every filter/search combination, site-wide - they intentionally
+    // ignore whatever filters were requested. They're fetched separately
+    // (not part of `query`) and excluded from the normal filtered query
+    // below so the same listing never shows up twice on one page.
+    const boostedQuery = { status: 'approved', isBoosted: true };
+    const normalQuery = { ...query, isBoosted: { $ne: true } };
+
+    const [boostedListings, listings, totalCount] = await Promise.all([
+      Listing.find(boostedQuery)
+        .populate('owner', 'name email phone')
+        .sort({ boostedAt: -1 }),
+      Listing.find(normalQuery)
         .populate('owner', 'name email phone')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limitNum),
-      Listing.countDocuments(query),
+      Listing.countDocuments(normalQuery),
     ]);
+
+    const data = [...boostedListings, ...listings];
 
     res.json({
       success: true,
-      count: totalCount,
-      data: listings,
+      count: totalCount + boostedListings.length,
+      data,
+      boostedCount: boostedListings.length,
       pagination: {
         page: pageNum,
         limit: limitNum,
-        totalCount,
+        // Includes boosted listings so the "N spaces found" total on the
+        // frontend reflects everything actually shown on the page.
+        totalCount: totalCount + boostedListings.length,
+        // Page count is driven by the filtered (non-boosted) results only,
+        // since boosted listings repeat on every page rather than
+        // consuming their own page slots.
         totalPages: Math.max(1, Math.ceil(totalCount / limitNum)),
       },
     });
