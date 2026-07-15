@@ -1,5 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -97,6 +98,8 @@ function App() {
           <DonationModal isOpen={isDonationOpen} onClose={closeDonationModal} />
 
           <PhoneGate />
+
+          <Analytics />
         </div>
       </Router>
     </AuthProvider>
