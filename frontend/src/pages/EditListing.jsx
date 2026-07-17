@@ -283,7 +283,7 @@ const EditListing = () => {
         {/* Municipality + Ward */}
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
           <div className="form-group">
-            <label htmlFor="municipality">Municipality / Rural Municipality *</label>
+            <label htmlFor="municipality">Municipality *</label>
             <select
               id="municipality"
               className="form-control"
@@ -291,6 +291,11 @@ const EditListing = () => {
               onChange={handleMunicipalityChange}
               required
             >
+              {/* Legacy rural-municipality listings keep showing their saved
+                  value; it just can't be re-selected once changed. */}
+              {municipality && !MUNICIPALITY_NAMES.includes(municipality) && (
+                <option value={municipality}>{municipality}</option>
+              )}
               {MUNICIPALITY_NAMES.map((name) => (
                 <option key={name} value={name}>
                   {name}

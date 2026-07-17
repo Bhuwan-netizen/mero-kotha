@@ -10,8 +10,14 @@ const JHAPA_LOCAL_LEVELS = [
   { name: 'Arjundhara Municipality', type: 'Municipality', wards: 11 },
   { name: 'Shivasatakshi Municipality', type: 'Municipality', wards: 11 },
   { name: 'Kankai Municipality', type: 'Municipality', wards: 9 },
+];
+
+// These are no longer accepted for NEW listings, but existing listings saved
+// with one must keep working (viewing, filtering by search, owner edits that
+// don't change the municipality). They're kept here for ward validation of
+// legacy data only.
+const LEGACY_LOCAL_LEVELS = [
   { name: 'Gauradaha Municipality', type: 'Municipality', wards: 9 },
-  // Rural Municipalities (Gaunpalika)
   { name: 'Kamal Rural Municipality', type: 'Rural Municipality', wards: 7 },
   { name: 'Barhadashi Rural Municipality', type: 'Rural Municipality', wards: 7 },
   { name: 'Jhapa Rural Municipality', type: 'Rural Municipality', wards: 7 },
@@ -21,10 +27,16 @@ const JHAPA_LOCAL_LEVELS = [
   { name: 'Haldibari Rural Municipality', type: 'Rural Municipality', wards: 5 },
 ];
 
+const ALL_LOCAL_LEVELS = [...JHAPA_LOCAL_LEVELS, ...LEGACY_LOCAL_LEVELS];
+
 const MUNICIPALITY_NAMES = JHAPA_LOCAL_LEVELS.map((m) => m.name);
 
+// True only for the currently offered (non-rural) municipalities.
+const isActiveMunicipality = (municipality) =>
+  JHAPA_LOCAL_LEVELS.some((m) => m.name === municipality);
+
 const getWardCount = (municipality) => {
-  const found = JHAPA_LOCAL_LEVELS.find((m) => m.name === municipality);
+  const found = ALL_LOCAL_LEVELS.find((m) => m.name === municipality);
   return found ? found.wards : 0;
 };
 
@@ -104,7 +116,9 @@ const AMENITIES = [
 
 module.exports = {
   JHAPA_LOCAL_LEVELS,
+  LEGACY_LOCAL_LEVELS,
   MUNICIPALITY_NAMES,
+  isActiveMunicipality,
   getWardCount,
   isValidWard,
   coreMunicipality,

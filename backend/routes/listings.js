@@ -9,6 +9,7 @@ const User = require('../models/User');
 const { protect, optionalAuth } = require('../middleware/auth');
 const {
   isValidWard,
+  isActiveMunicipality,
   buildMunicipalityMatcher,
   PROPERTY_TYPES,
   FURNISHING_OPTIONS,
@@ -98,9 +99,11 @@ router.post('/', protect, handleUpload, async (req, res) => {
       propertyType, furnishing, bedrooms, bathrooms, amenities, preferredTenant,
     } = req.body;
 
-    // Municipality + ward validation (ward range depends on the municipality)
+    // Municipality + ward validation (ward range depends on the municipality).
+    // New listings may only be created in the offered municipalities - rural
+    // municipalities are no longer accepted.
     const wardNum = parseInt(ward);
-    if (!municipality || !isValidWard(municipality, wardNum)) {
+    if (!municipality || !isActiveMunicipality(municipality) || !isValidWard(municipality, wardNum)) {
       return res.status(400).json({
         success: false,
         message: 'Please select a valid municipality and ward number',
@@ -432,6 +435,15 @@ router.put('/:id', protect, handleUpload, async (req, res) => {
     // Resolve the municipality being saved (new value or the existing one) so
     // the ward range is validated against the correct local level.
     const effectiveMunicipality = municipality || listing.municipality;
+
+    // Changing the municipality is only allowed to a currently offered
+    // (non-rural) one. A legacy rural value can stay if left unchanged.
+    if (municipality && municipality !== listing.municipality && !isActiveMunicipality(municipality)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please select a valid municipality',
+      });
+    }
 
     if (municipality) listing.municipality = municipality;
 

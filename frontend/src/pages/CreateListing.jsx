@@ -238,7 +238,7 @@ const CreateListing = () => {
         {/* Municipality + Ward */}
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
           <div className="form-group">
-            <label htmlFor="municipality">Municipality / Rural Municipality *</label>
+            <label htmlFor="municipality">Municipality *</label>
             <select
               id="municipality"
               className="form-control"
