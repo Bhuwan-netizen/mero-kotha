@@ -17,6 +17,10 @@ const {
   AMENITIES,
 } = require('../config/jhapa');
 
+// All customer <-> owner contact goes through the site admin. Every listing's
+// contact phone is forced to this number regardless of what the owner submits.
+const BROKER_PHONE = '9815910188';
+
 // Normalize the amenities payload (sent as JSON string or array) to a clean
 // list limited to known amenity values.
 const parseAmenities = (raw) => {
@@ -95,7 +99,7 @@ router.post('/', protect, handleUpload, async (req, res) => {
   try {
     const {
       title, description, municipality, ward, location, price,
-      contactName, contactPhone, isNegotiable,
+      contactName, isNegotiable,
       propertyType, furnishing, bedrooms, bathrooms, amenities, preferredTenant,
     } = req.body;
 
@@ -144,7 +148,8 @@ router.post('/', protect, handleUpload, async (req, res) => {
       isNegotiable: isNegotiableBool,
       images: imagePaths,
       contactName: contactName || req.user.name,
-      contactPhone: contactPhone || req.user.phone,
+      // Locked: all inquiries go through the admin's phone.
+      contactPhone: BROKER_PHONE,
     });
 
     res.status(201).json({
@@ -428,7 +433,7 @@ router.put('/:id', protect, handleUpload, async (req, res) => {
 
     const {
       title, description, municipality, ward, location, price,
-      contactName, contactPhone, isNegotiable,
+      contactName, isNegotiable,
       propertyType, furnishing, bedrooms, bathrooms, amenities, preferredTenant,
     } = req.body;
 
@@ -478,7 +483,9 @@ router.put('/:id', protect, handleUpload, async (req, res) => {
     if (description) listing.description = description;
     if (location) listing.location = location;
     if (contactName) listing.contactName = contactName;
-    if (contactPhone) listing.contactPhone = contactPhone;
+    // Locked: contact phone is always the admin's number (also fixes any
+    // older listings that were saved with the owner's own phone).
+    listing.contactPhone = BROKER_PHONE;
 
     // New listing detail fields
     if (propertyType && PROPERTY_TYPES.includes(propertyType)) listing.propertyType = propertyType;

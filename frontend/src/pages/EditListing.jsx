@@ -33,7 +33,6 @@ const EditListing = () => {
   const [price, setPrice] = useState('');
   const [isNegotiable, setIsNegotiable] = useState(false);
   const [contactName, setContactName] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
   const [existingImages, setExistingImages] = useState([]);
 
   const wardOptions = getWardOptions(municipality);
@@ -81,7 +80,6 @@ const EditListing = () => {
           setPrice(l.price === 0 ? '' : String(l.price));
           setIsNegotiable(l.isNegotiable || false);
           setContactName(l.contactName);
-          setContactPhone(l.contactPhone);
           setExistingImages(l.images || []);
         } else {
           setError(data.message || 'Failed to fetch listing data.');
@@ -155,7 +153,7 @@ const EditListing = () => {
     setError('');
 
     // Field validation
-    if (!title || !description || !municipality || !location || !propertyType || (!isNegotiable && !price) || !contactName || !contactPhone) {
+    if (!title || !description || !municipality || !location || !propertyType || (!isNegotiable && !price) || !contactName) {
       setError('Please fill in all required fields.');
       return;
     }
@@ -191,7 +189,6 @@ const EditListing = () => {
     formData.append('price', isNegotiable && !price ? '0' : price);
     formData.append('isNegotiable', isNegotiable);
     formData.append('contactName', contactName);
-    formData.append('contactPhone', contactPhone);
 
     // Append new images if selected
     selectedImages.forEach((image) => {
@@ -553,17 +550,19 @@ const EditListing = () => {
             />
           </div>
 
-          {/* Contact Phone */}
+          {/* Contact phone is handled by the Mero Kotha team */}
           <div className="form-group">
-            <label htmlFor="contactPhone">Contact Phone Number *</label>
+            <label>Contact Phone Number</label>
             <input
               type="tel"
-              id="contactPhone"
               className="form-control"
-              value={contactPhone}
-              onChange={(e) => setContactPhone(e.target.value)}
-              required
+              value="9815910188 (Mero Kotha)"
+              disabled
+              readOnly
             />
+            <small style={{ color: 'var(--text-light, #777)' }}>
+              All inquiries are handled through the Mero Kotha team, who will connect interested customers with you.
+            </small>
           </div>
         </div>
 

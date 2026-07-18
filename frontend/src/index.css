@@ -6,9 +6,6 @@
   --primary-dark: #7D1419;
   --primary-light: #FDF2F2;
   --accent: #D4AF37;
-  --esewa: #60BB46;
-  --esewa-hover: #509E3A;
-  --esewa-light: #EBF7E9;
   
   --bg-main: #FBFBFA;
   --bg-card: #FFFFFF;
@@ -112,17 +109,6 @@ main {
 .btn-secondary:hover {
   background-color: var(--primary-light);
   transform: translateY(-2px);
-}
-
-.btn-esewa {
-  background-color: var(--esewa);
-  color: white;
-}
-
-.btn-esewa:hover {
-  background-color: var(--esewa-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 0 15px rgba(96, 187, 70, 0.3);
 }
 
 .btn-outline {
@@ -516,8 +502,8 @@ main {
 }
 
 .support-banner {
-  background-color: var(--esewa-light);
-  border: 1px dashed var(--esewa);
+  background-color: var(--primary-light);
+  border: 1px dashed var(--primary);
   border-radius: var(--radius-md);
   padding: 1.25rem;
   display: flex;
@@ -527,7 +513,7 @@ main {
 }
 
 .support-text h4 {
-  color: var(--esewa-hover);
+  color: var(--primary-dark);
   margin-bottom: 0.25rem;
   font-size: 1.05rem;
 }
@@ -804,51 +790,6 @@ main {
   background-color: var(--primary-light);
   color: var(--primary);
   border: 1px solid rgba(165, 29, 36, 0.15);
-}
-
-/* eSewa Modal Elements */
-.esewa-logo-modal {
-  background-color: var(--esewa);
-  color: white;
-  font-family: var(--font-heading);
-  font-weight: 800;
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius-sm);
-  display: inline-block;
-  margin-bottom: 1.5rem;
-  font-size: 1.25rem;
-}
-
-.esewa-details {
-  text-align: center;
-  margin-bottom: 1.5rem;
-}
-
-.esewa-number {
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: var(--esewa-hover);
-  letter-spacing: 1px;
-  margin: 0.5rem 0;
-  padding: 0.5rem;
-  background-color: var(--esewa-light);
-  border-radius: var(--radius-sm);
-  border: 1px dashed var(--esewa);
-}
-
-.qr-placeholder {
-  width: auto;
-  max-width: 220px;
-  background-color: #F1F5F9;
-  border: 1px solid var(--border);
-  margin: 1.5rem auto;
-  border-radius: var(--radius-sm);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  font-size: 0.8rem;
-  color: var(--text-muted);
 }
 
 /* Animations */

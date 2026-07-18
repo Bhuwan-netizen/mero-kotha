@@ -31,7 +31,6 @@ const CreateListing = () => {
   const [price, setPrice] = useState('');
   const [isNegotiable, setIsNegotiable] = useState(false);
   const [contactName, setContactName] = useState(user?.name || '');
-  const [contactPhone, setContactPhone] = useState(user?.phone || '');
 
   // Ward options depend on the selected municipality
   const wardOptions = getWardOptions(municipality);
@@ -121,7 +120,7 @@ const CreateListing = () => {
     setError('');
 
     // Field validation
-    if (!title || !description || !municipality || !location || !propertyType || (!isNegotiable && !price) || !contactName || !contactPhone) {
+    if (!title || !description || !municipality || !location || !propertyType || (!isNegotiable && !price) || !contactName) {
       setError('Please fill in all required fields.');
       return;
     }
@@ -164,7 +163,6 @@ const CreateListing = () => {
     formData.append('price', isNegotiable && !price ? '0' : price);
     formData.append('isNegotiable', isNegotiable);
     formData.append('contactName', contactName);
-    formData.append('contactPhone', contactPhone);
 
     // Append images
     selectedImages.forEach((image) => {
@@ -485,17 +483,19 @@ const CreateListing = () => {
             />
           </div>
 
-          {/* Contact Phone */}
+          {/* Contact phone is handled by the Mero Kotha team */}
           <div className="form-group">
-            <label htmlFor="contactPhone">Contact Phone Number *</label>
+            <label>Contact Phone Number</label>
             <input
               type="tel"
-              id="contactPhone"
               className="form-control"
-              value={contactPhone}
-              onChange={(e) => setContactPhone(e.target.value)}
-              required
+              value="9815910188 (Mero Kotha)"
+              disabled
+              readOnly
             />
+            <small style={{ color: 'var(--text-light, #777)' }}>
+              All inquiries are handled through the Mero Kotha team, who will connect interested customers with you.
+            </small>
           </div>
         </div>
 

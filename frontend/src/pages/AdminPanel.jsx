@@ -4,6 +4,7 @@ import { AuthContext } from '../context/AuthContext';
 import {
   LayoutDashboard, Home, Users, Trash2, Edit, Eye, AlertCircle,
   Search, ShieldCheck, RefreshCw, Clock, CheckCircle2, XCircle, Rocket,
+  Tag, Save,
 } from 'lucide-react';
 import { cldImg, IMG } from '../utils/cloudinary';
 
@@ -58,21 +59,40 @@ const AdminPanel = () => {
   const [statusFilter, setStatusFilter] = useState('pending');
   const [boostedOnly, setBoostedOnly] = useState(false);
 
+  // Service pricing (edited on the Pricing tab, shown in the public modal)
+  const [pricingForm, setPricingForm] = useState({
+    ownerWeekly: '', ownerBiWeekly: '', ownerMonthly: '',
+    customerViewingPrice: '', ownerOffer: '', customerOffer: '',
+  });
+  const [pricingSaving, setPricingSaving] = useState(false);
+  const [pricingMsg, setPricingMsg] = useState(null);
+
   const authHeaders = { Authorization: `Bearer ${token}` };
 
   const loadAll = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [sRes, lRes, uRes] = await Promise.all([
+      const [sRes, lRes, uRes, pRes] = await Promise.all([
         fetch(`${API_URL}/admin/stats`, { headers: authHeaders }),
         fetch(`${API_URL}/admin/listings`, { headers: authHeaders }),
         fetch(`${API_URL}/admin/users`, { headers: authHeaders }),
+        fetch(`${API_URL}/pricing`),
       ]);
-      const [s, l, u] = await Promise.all([sRes.json(), lRes.json(), uRes.json()]);
+      const [s, l, u, p] = await Promise.all([sRes.json(), lRes.json(), uRes.json(), pRes.json()]);
       if (s.success) setStats(s.data);
       if (l.success) setListings(l.data);
       if (u.success) setUsers(u.data);
+      if (p.success) {
+        setPricingForm({
+          ownerWeekly: p.data.ownerWeekly || '',
+          ownerBiWeekly: p.data.ownerBiWeekly || '',
+          ownerMonthly: p.data.ownerMonthly || '',
+          customerViewingPrice: p.data.customerViewingPrice || '',
+          ownerOffer: p.data.ownerOffer || '',
+          customerOffer: p.data.customerOffer || '',
+        });
+      }
       if (!s.success || !l.success || !u.success) {
         setError(s.message || l.message || u.message || 'Failed to load admin data');
       }
@@ -187,6 +207,32 @@ const AdminPanel = () => {
     }
   };
 
+  const savePricing = async (e) => {
+    e.preventDefault();
+    setPricingSaving(true);
+    setPricingMsg(null);
+    try {
+      const res = await fetch(`${API_URL}/pricing`, {
+        method: 'PUT',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify(pricingForm),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPricingMsg({ ok: true, text: 'Pricing saved. It is now live in the public Pricing modal.' });
+      } else {
+        setPricingMsg({ ok: false, text: data.message || 'Failed to save pricing' });
+      }
+    } catch {
+      setPricingMsg({ ok: false, text: 'Server error while saving pricing' });
+    } finally {
+      setPricingSaving(false);
+    }
+  };
+
+  const setPricingField = (field) => (e) =>
+    setPricingForm((prev) => ({ ...prev, [field]: e.target.value }));
+
   const filteredListings = listings
     .filter((l) => statusFilter === 'all' || l.status === statusFilter)
     .filter((l) => !boostedOnly || l.isBoosted)
@@ -242,6 +288,7 @@ const AdminPanel = () => {
         {tabBtn('overview', 'Overview', <LayoutDashboard size={16} />)}
         {tabBtn('listings', `Listings (${listings.length})${stats?.pendingCount ? ` • ${stats.pendingCount} pending` : ''}`, <Home size={16} />)}
         {tabBtn('users', `Users (${users.length})`, <Users size={16} />)}
+        {tabBtn('pricing', 'Pricing', <Tag size={16} />)}
       </div>
 
       {error && (
@@ -401,6 +448,58 @@ const AdminPanel = () => {
                 ))}
               </div>
             </div>
+          )}
+
+          {/* PRICING */}
+          {tab === 'pricing' && (
+            <form onSubmit={savePricing} style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '1.5rem', maxWidth: 640 }}>
+              <h3 style={{ color: 'var(--primary-dark)', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Tag size={18} /> Service Pricing
+              </h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
+                These prices are shown publicly in the Pricing modal (Navbar &amp; Footer). Set a value to 0 or leave it empty to show "Contact us" instead.
+              </p>
+
+              <h4 style={{ color: 'var(--primary-dark)', fontSize: '0.95rem', marginBottom: '0.75rem' }}>For Property Owners (listing service, NPR)</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="form-group">
+                  <label>Weekly</label>
+                  <input type="number" min="0" className="form-control" value={pricingForm.ownerWeekly} onChange={setPricingField('ownerWeekly')} placeholder="e.g. 200" />
+                </div>
+                <div className="form-group">
+                  <label>Bi-weekly</label>
+                  <input type="number" min="0" className="form-control" value={pricingForm.ownerBiWeekly} onChange={setPricingField('ownerBiWeekly')} placeholder="e.g. 350" />
+                </div>
+                <div className="form-group">
+                  <label>Monthly</label>
+                  <input type="number" min="0" className="form-control" value={pricingForm.ownerMonthly} onChange={setPricingField('ownerMonthly')} placeholder="e.g. 600" />
+                </div>
+              </div>
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label>Owner Offer / Discount (optional)</label>
+                <input type="text" className="form-control" value={pricingForm.ownerOffer} onChange={setPricingField('ownerOffer')} placeholder="e.g. 20% off monthly plan this month" />
+              </div>
+
+              <h4 style={{ color: 'var(--primary-dark)', fontSize: '0.95rem', marginBottom: '0.75rem' }}>For Customers (NPR)</h4>
+              <div className="form-group" style={{ marginBottom: '1rem', maxWidth: 250 }}>
+                <label>Price per Viewing / Property Info</label>
+                <input type="number" min="0" className="form-control" value={pricingForm.customerViewingPrice} onChange={setPricingField('customerViewingPrice')} placeholder="e.g. 100" />
+              </div>
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label>Customer Offer / Discount (optional)</label>
+                <input type="text" className="form-control" value={pricingForm.customerOffer} onChange={setPricingField('customerOffer')} placeholder="e.g. First viewing free" />
+              </div>
+
+              {pricingMsg && (
+                <p style={{ marginBottom: '1rem', fontWeight: 600, fontSize: '0.9rem', color: pricingMsg.ok ? '#15803D' : '#B91C1C' }}>
+                  {pricingMsg.text}
+                </p>
+              )}
+
+              <button type="submit" className="btn btn-primary" disabled={pricingSaving}>
+                <Save size={16} /> {pricingSaving ? 'Saving...' : 'Save Pricing'}
+              </button>
+            </form>
           )}
 
           {/* USERS */}

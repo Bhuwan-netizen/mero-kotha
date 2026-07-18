@@ -24,6 +24,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/listings', require('./routes/listings'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/pricing', require('./routes/pricing'));
 
 // Base Route
 app.get('/', (req, res) => {

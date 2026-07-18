@@ -4,7 +4,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
-import DonationModal from './components/DonationModal';
+import PricingModal from './components/PricingModal';
 import PhonePromptModal from './components/PhonePromptModal';
 import PrivateRoute from './components/PrivateRoute';
 import AdminRoute from './components/AdminRoute';
@@ -29,16 +29,16 @@ import AdminPanel from './pages/AdminPanel';
 import SavedListings from './pages/SavedListings';
 
 function App() {
-  const [isDonationOpen, setIsDonationOpen] = useState(false);
+  const [isPricingOpen, setIsPricingOpen] = useState(false);
 
-  const openDonationModal = () => setIsDonationOpen(true);
-  const closeDonationModal = () => setIsDonationOpen(false);
+  const openPricingModal = () => setIsPricingOpen(true);
+  const closePricingModal = () => setIsPricingOpen(false);
 
   return (
     <AuthProvider>
       <Router>
         <div className="app-container">
-          <Navbar onOpenDonation={openDonationModal} />
+          <Navbar onOpenPricing={openPricingModal} />
 
           <main>
             <Routes>
@@ -93,9 +93,9 @@ function App() {
             </Routes>
           </main>
 
-          <Footer onOpenDonation={openDonationModal} />
+          <Footer onOpenPricing={openPricingModal} />
 
-          <DonationModal isOpen={isDonationOpen} onClose={closeDonationModal} />
+          <PricingModal isOpen={isPricingOpen} onClose={closePricingModal} />
 
           <PhoneGate />
 

@@ -3,7 +3,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { Home, Menu, X, PlusCircle, LogOut, User, ShieldCheck, Heart, Phone } from 'lucide-react';
 
-const Navbar = ({ onOpenDonation }) => {
+const Navbar = ({ onOpenPricing }) => {
   const { user, logout } = useContext(AuthContext);
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
@@ -61,13 +61,13 @@ const Navbar = ({ onOpenDonation }) => {
 
           <button
             onClick={() => {
-              onOpenDonation();
+              onOpenPricing();
               setIsOpen(false);
             }}
             className="nav-link"
             style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}
           >
-            Donate & Support
+            Pricing
           </button>
 
           {user && (

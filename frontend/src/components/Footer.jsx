@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, Phone } from 'lucide-react';
 
-const Footer = ({ onOpenDonation }) => {
+const Footer = ({ onOpenPricing }) => {
   return (
     <footer className="footer">
       <div className="container">
@@ -33,14 +33,14 @@ const Footer = ({ onOpenDonation }) => {
           </div>
 
           <div className="footer-links" style={{ gridColumn: 'span 1' }}>
-            <h4>Support Project</h4>
-            <div className="support-banner" onClick={onOpenDonation} style={{ cursor: 'pointer' }}>
+            <h4>Service Pricing</h4>
+            <div className="support-banner" onClick={onOpenPricing} style={{ cursor: 'pointer' }}>
               <div className="support-text">
-                <h4>Support Mero Kotha</h4>
-                <p>Keep this project free and help us maintain it. Donate via eSewa.</p>
+                <h4>Our Plans & Pricing</h4>
+                <p>Listing plans for owners and viewing charges for customers.</p>
               </div>
-              <button className="btn btn-esewa" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
-                Donate
+              <button className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
+                View Pricing
               </button>
             </div>
           </div>
