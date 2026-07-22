@@ -104,6 +104,16 @@ const ListingSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    // Admin-controlled "rented/booked" flag. Rented listings stay publicly
+    // visible but show a red "Rented" label. Toggled from the Admin Panel.
+    isRented: {
+      type: Boolean,
+      default: false,
+    },
+    rentedAt: {
+      type: Date,
+      default: null,
+    },
     // Admin "boost" (a.k.a. Featured). Boosted listings are pinned to the
     // top of every listings page/filter combination on the site until an
     // admin turns the boost back off - there is no automatic expiry.

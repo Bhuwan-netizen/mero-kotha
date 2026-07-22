@@ -156,6 +156,29 @@ router.patch('/listings/:id/boost', async (req, res) => {
   }
 });
 
+// @desc    Mark a listing as rented/booked (or available again). Rented
+//          listings remain publicly visible with a red "Rented" label.
+// @route   PATCH /api/admin/listings/:id/rented
+// @access  Admin
+router.patch('/listings/:id/rented', async (req, res) => {
+  try {
+    const { rented } = req.body;
+
+    const listing = await Listing.findById(req.params.id);
+    if (!listing) {
+      return res.status(404).json({ success: false, message: 'Listing not found' });
+    }
+
+    listing.isRented = !!rented;
+    listing.rentedAt = listing.isRented ? new Date() : null;
+    await listing.save();
+
+    res.json({ success: true, data: listing });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // @desc    Delete a user and all of their listings (with images)
 // @route   DELETE /api/admin/users/:id
 // @access  Admin

@@ -84,6 +84,7 @@ const ListingDetail = () => {
     title, description, municipality, ward, location, price, images,
     contactName, contactPhone, createdAt, isNegotiable,
     propertyType, furnishing, bedrooms, bathrooms, amenities, preferredTenant,
+    isRented,
   } = listing;
 
   // Build a WhatsApp link from the contact phone (Nepal +977).
@@ -126,6 +127,14 @@ const ListingDetail = () => {
         <ArrowLeft size={16} />
         Back to listings
       </button>
+
+      {isRented && (
+        <div style={{ background: '#FEE2E2', border: '1px solid #B91C1C', borderRadius: 'var(--radius-md)', padding: '0.85rem 1.25rem', marginBottom: '1.25rem' }}>
+          <p style={{ color: '#B91C1C', fontWeight: 800, fontSize: '1.05rem', margin: 0 }}>
+            RENTED / भाडामा गइसक्यो — This property has already been rented or booked. Contact us to find similar available spaces.
+          </p>
+        </div>
+      )}
 
       <h1 style={{ fontSize: '2.2rem', color: 'var(--primary-dark)', marginBottom: '0.5rem', lineHeight: 1.2 }}>
         {title}

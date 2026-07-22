@@ -4,7 +4,7 @@ import { AuthContext } from '../context/AuthContext';
 import {
   LayoutDashboard, Home, Users, Trash2, Edit, Eye, AlertCircle,
   Search, ShieldCheck, RefreshCw, Clock, CheckCircle2, XCircle, Rocket,
-  Tag, Save,
+  Tag, Save, KeyRound,
 } from 'lucide-react';
 import { cldImg, IMG } from '../utils/cloudinary';
 
@@ -58,6 +58,7 @@ const AdminPanel = () => {
   const [busyId, setBusyId] = useState(null);
   const [statusFilter, setStatusFilter] = useState('pending');
   const [boostedOnly, setBoostedOnly] = useState(false);
+  const [rentedOnly, setRentedOnly] = useState(false);
 
   // Service pricing (edited on the Pricing tab, shown in the public modal)
   const [pricingForm, setPricingForm] = useState({
@@ -188,6 +189,29 @@ const AdminPanel = () => {
     }
   };
 
+  // Mark a listing as rented/booked (or available again). Rented listings
+  // stay publicly visible but show a red "Rented" label on the site.
+  const setListingRented = async (id, rented) => {
+    setBusyId(id);
+    try {
+      const res = await fetch(`${API_URL}/admin/listings/${id}/rented`, {
+        method: 'PATCH',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rented }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setListings((prev) => prev.map((l) => (l._id === id ? data.data : l)));
+      } else {
+        alert(data.message || 'Failed to update rented status');
+      }
+    } catch {
+      alert('Server error while updating rented status');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const deleteUser = async (id) => {
     if (!window.confirm('Delete this user AND all of their listings permanently? This cannot be undone.')) return;
     setBusyId(id);
@@ -236,6 +260,7 @@ const AdminPanel = () => {
   const filteredListings = listings
     .filter((l) => statusFilter === 'all' || l.status === statusFilter)
     .filter((l) => !boostedOnly || l.isBoosted)
+    .filter((l) => !rentedOnly || l.isRented)
     .filter((l) => {
       if (!search.trim()) return true;
       const q = search.toLowerCase();
@@ -381,6 +406,19 @@ const AdminPanel = () => {
                   <Rocket size={14} />
                   Boosted only{stats?.boostedCount ? ` (${stats.boostedCount})` : ''}
                 </button>
+                <button
+                  onClick={() => setRentedOnly((r) => !r)}
+                  className="btn"
+                  style={{
+                    padding: '0.4rem 0.9rem', fontSize: '0.82rem',
+                    background: rentedOnly ? '#B91C1C' : 'transparent',
+                    color: rentedOnly ? 'white' : '#B91C1C',
+                    border: '1px solid #B91C1C',
+                  }}
+                >
+                  <KeyRound size={14} />
+                  Rented only ({listings.filter((l) => l.isRented).length})
+                </button>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -397,6 +435,11 @@ const AdminPanel = () => {
                         {l.isBoosted && (
                           <span className="admin-featured-pill">
                             <Rocket size={12} fill="currentColor" /> Featured
+                          </span>
+                        )}
+                        {l.isRented && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', fontWeight: 700, color: '#B91C1C', background: '#FEE2E2', padding: '0.2rem 0.55rem', borderRadius: 999 }}>
+                            <KeyRound size={12} /> Rented
                           </span>
                         )}
                       </h3>
@@ -420,6 +463,20 @@ const AdminPanel = () => {
                           <XCircle size={15} /> Reject
                         </button>
                       )}
+                      <button
+                        onClick={() => setListingRented(l._id, !l.isRented)}
+                        className="btn"
+                        style={{
+                          padding: '0.45rem 0.8rem', fontSize: '0.85rem',
+                          background: l.isRented ? '#B91C1C' : 'transparent',
+                          color: l.isRented ? 'white' : '#B91C1C',
+                          border: '1px solid #B91C1C',
+                        }}
+                        disabled={busyId === l._id}
+                        title={l.isRented ? 'Mark this listing as available again' : 'Mark this listing as rented/booked (shows a red "Rented" label on the site)'}
+                      >
+                        <KeyRound size={15} /> {l.isRented ? 'Mark Available' : 'Mark Rented'}
+                      </button>
                       <button
                         onClick={() => setListingBoost(l._id, !l.isBoosted)}
                         className={l.isBoosted ? 'btn btn-boost is-boosted' : 'btn btn-boost'}

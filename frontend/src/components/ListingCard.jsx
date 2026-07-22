@@ -8,7 +8,7 @@ const ListingCard = ({ listing }) => {
   const {
     _id, title, description, municipality, ward, location, price, images,
     contactName, isNegotiable, propertyType, bedrooms, bathrooms, furnishing,
-    isBoosted,
+    isBoosted, isRented,
   } = listing;
 
   const { user, isSaved, toggleSave } = useContext(AuthContext);
@@ -65,6 +65,9 @@ const ListingCard = ({ listing }) => {
             Featured
           </span>
         )}
+        {isRented && (
+          <span className="card-rented-badge">RENTED / भाडामा गइसक्यो</span>
+        )}
         <span className="card-badge" style={isBoosted ? { top: '2.75rem' } : undefined}>{shortMuni ? `${shortMuni} • W${ward}` : `Ward ${ward}`}</span>
         <span className="card-price" style={{ fontSize: isNegotiable && price <= 0 ? '0.9rem' : '1.1rem', padding: '0.4rem 0.75rem' }}>
           {renderPriceBadge()}
@@ -98,6 +101,12 @@ const ListingCard = ({ listing }) => {
         </div>
 
         <h3 className="card-title">{title}</h3>
+
+        {isRented && (
+          <p style={{ color: '#B91C1C', fontWeight: 700, fontSize: '0.85rem', margin: '0.15rem 0' }}>
+            This property has already been rented / booked.
+          </p>
+        )}
 
         <div className="card-location">
           <MapPin size={14} />

@@ -1114,6 +1114,23 @@ main {
 .listing-card-featured:hover {
   box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.45), var(--shadow-lg);
 }
+/* Red diagonal-ish "RENTED" banner across the card image */
+.card-rented-badge {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #B91C1C;
+  color: white;
+  padding: 0.3rem 0.9rem;
+  border-radius: 50px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(185, 28, 28, 0.4);
+}
+
 .card-featured-badge {
   position: absolute;
   top: 1rem;
